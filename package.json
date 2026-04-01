@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node app.js",
-    "build:win": "pkg app.js --targets node20-win-x64 --output dist/mtproto-checker.exe"
+    "build:win": "pkg app.js --targets node18-win-x64 --output dist/mtproto-checker.exe"
   },
   "keywords": [],
   "author": "",
