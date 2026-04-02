@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const open = require('open');
+const { exec } = require('child_process');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 
@@ -11,6 +11,17 @@ const API_ID = 6;
 const API_HASH = 'eb06d4abfb49dc3eeb1aeb98ae0f581e';
 
 app.use(bodyParser.json({ limit: '50mb' }));
+
+function openInBrowser(url) {
+    const command = process.platform === 'win32'
+        ? `start "" "${url}"`
+        : process.platform === 'darwin'
+            ? `open "${url}"`
+            : `xdg-open "${url}"`;
+    exec(command, (err) => {
+        if (err) console.log('Could not open browser automatically.');
+    });
+}
 
 const htmlContent = `
 <!DOCTYPE html>
@@ -538,5 +549,5 @@ app.post('/check', async (req, res) => {
 
 app.listen(PORT, async () => {
     console.log(`Server running at http://localhost:${PORT}`);
-    try { await open(`http://localhost:${PORT}`); } catch (e) { }
+    openInBrowser(`http://localhost:${PORT}`);
 });
