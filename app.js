@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const open = require('open');
+const { exec } = require('child_process');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 
@@ -11,6 +11,17 @@ const API_ID = 6;
 const API_HASH = 'eb06d4abfb49dc3eeb1aeb98ae0f581e';
 
 app.use(bodyParser.json({ limit: '50mb' }));
+
+function openInBrowser(url) {
+    const command = process.platform === 'win32'
+        ? `start "" "${url}"`
+        : process.platform === 'darwin'
+            ? `open "${url}"`
+            : `xdg-open "${url}"`;
+    exec(command, (err) => {
+        if (err) console.log('Could not open browser automatically.');
+    });
+}
 
 const htmlContent = `
 <!DOCTYPE html>
@@ -121,8 +132,23 @@ const htmlContent = `
 
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         @media(max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        @media(max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
 
         label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
+        .settings-grid label { margin-bottom: 6px; }
+        .settings-grid input {
+            width: 100%;
+            box-sizing: border-box;
+            background-color: var(--input);
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 13px;
+            outline: none;
+        }
+        .settings-grid input:focus { border-color: var(--accent); }
         
         textarea {
             width: 100%; height: 350px; background-color: var(--input); color: #e2e8f0;
@@ -181,6 +207,16 @@ const htmlContent = `
     <div class="grid">
         <div>
             <label data-i18n="inputLabel">📥 لیست ورودی</label>
+            <div class="settings-grid">
+                <div>
+                    <label for="timeoutSeconds" data-i18n="timeoutLabel">⏱️ تاخیر هر پروکسی (ثانیه)</label>
+                    <input id="timeoutSeconds" type="number" value="10">
+                </div>
+                <div>
+                    <label for="concurrency" data-i18n="concurrencyLabel">⚙️ تعداد بررسی همزمان</label>
+                    <input id="concurrency" type="number" value="10">
+                </div>
+            </div>
             <textarea id="inputProxies" placeholder="..."></textarea>
             <button class="btn-start" id="startBtn" onclick="startCheck()" data-i18n="startBtn">شروع بررسی</button>
         </div>
@@ -209,6 +245,8 @@ const htmlContent = `
             startBtn: "شروع بررسی",
             outputLabel: "🚀 لیست ۱۰۰٪ سالم",
             outputPlaceholder: "نتایج سالم اینجا نمایش داده می‌شوند...",
+            timeoutLabel: "⏱️ تاخیر هر پروکسی (ثانیه)",
+            concurrencyLabel: "⚙️ تعداد بررسی همزمان",
             copyBtn: "کپی کردن لیست سالم",
             processing: "در حال پردازش...",
             status: "وضعیت: {c} / {t} | سالم: {w}",
@@ -228,6 +266,8 @@ const htmlContent = `
             startBtn: "Start Check",
             outputLabel: "🚀 Working Proxies (100%)",
             outputPlaceholder: "Working proxies will appear here...",
+            timeoutLabel: "⏱️ Per-proxy timeout (seconds)",
+            concurrencyLabel: "⚙️ Concurrent checks",
             copyBtn: "Copy Working List",
             processing: "Processing...",
             status: "Status: {c} / {t} | Working: {w}",
@@ -318,6 +358,12 @@ const htmlContent = `
             const lines = input.split('\\n');
             skippedCount = 0;
             const validLinks = lines.map(parseLink).filter(l => l !== null);
+            const timeoutSeconds = Number(document.getElementById('timeoutSeconds').value) > 0
+                ? Number(document.getElementById('timeoutSeconds').value)
+                : 10;
+            const concurrency = Number(document.getElementById('concurrency').value) > 0
+                ? Number(document.getElementById('concurrency').value)
+                : 10;
 
             if (validLinks.length === 0) {
                 showToast(t.toastNoValid, true);
@@ -340,12 +386,12 @@ const htmlContent = `
             const checkOne = async (proxyData) => {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    const timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
 
                     const response = await fetch('/check', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify(proxyData),
+                        body: JSON.stringify({ ...proxyData, timeoutMs: timeoutSeconds * 1000 }),
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
@@ -367,7 +413,7 @@ const htmlContent = `
                 }
             };
 
-            const batchSize = 10;
+            const batchSize = concurrency;
             for (let i = 0; i < validLinks.length; i += batchSize) {
                 const batch = validLinks.slice(i, i + batchSize);
                 await Promise.all(batch.map(p => checkOne(p)));
@@ -457,8 +503,8 @@ const htmlContent = `
 app.get('/', (req, res) => res.send(htmlContent));
 
 app.post('/check', async (req, res) => {
-    const { server, port, secret } = req.body;
-    const TIMEOUT = 8000;
+    const { server, port, secret, timeoutMs } = req.body;
+    const TIMEOUT = Number(timeoutMs) > 0 ? Number(timeoutMs) : 10000;
 
     const client = new TelegramClient(new StringSession(''), API_ID, API_HASH, {
         connectionRetries: 1,
@@ -469,7 +515,7 @@ app.post('/check', async (req, res) => {
             secret: secret,
             MTProxy: true,
             socksType: 5,
-            timeout: 4
+            timeout: Math.max(1, Math.round(TIMEOUT / 1000))
         }
     });
 
@@ -503,5 +549,5 @@ app.post('/check', async (req, res) => {
 
 app.listen(PORT, async () => {
     console.log(`Server running at http://localhost:${PORT}`);
-    try { await open(`http://localhost:${PORT}`); } catch (e) { }
+    openInBrowser(`http://localhost:${PORT}`);
 });
