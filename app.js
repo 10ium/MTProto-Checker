@@ -587,6 +587,16 @@ try {
     console.error('Failed to read index.html:', e.message);
 }
 
+const faviconPath = path.join(__dirname, 'favicon.svg');
+app.get(['/favicon.ico', '/favicon.svg'], (req, res) => {
+    if (fs.existsSync(faviconPath)) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.sendFile(faviconPath);
+    } else {
+        res.status(404).end();
+    }
+});
+
 app.get('/', (req, res) => {
     if (htmlContent) {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -597,6 +607,6 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`Telegram Proxy Checker running at http://localhost:${PORT}`);
     openSystemUrl(`http://localhost:${PORT}`);
 });

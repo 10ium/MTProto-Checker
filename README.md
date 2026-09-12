@@ -1,6 +1,8 @@
-# 🛡️ Telegram Proxy Pro Deep Checker (MTProto, SOCKS5, HTTP & WebProxy)
+# 🛡️ Telegram Proxy Checker (MTProto, SOCKS5, HTTP & WebProxy)
 
-A powerful, pure Node.js tool to verify **all 4 official Telegram proxy protocols** by performing real protocol handshakes and encrypted data exchanges. Unlike simple TCP checkers, this tool verifies true end-to-end data transmission to Telegram core servers, ensuring 100% real connectivity and eliminating the "Connecting..." freeze issue in Telegram.
+A powerful, pure Node.js tool to verify **all 4 official Telegram proxy protocols** with real protocol handshakes and encrypted data exchanges. Unlike simple TCP checkers, this tool verifies true end-to-end data transmission to Telegram core servers, ensuring 100% real connectivity and eliminating the "Connecting..." freeze issue in Telegram.
+
+📢 **Official Telegram Channel:** [@vpnclashfa](https://t.me/vpnclashfa)
 
 ![UI Screenshot](images/screenshot.png)
 
@@ -13,20 +15,22 @@ A powerful, pure Node.js tool to verify **all 4 official Telegram proxy protocol
 
 ## 🚀 Key Features
 
+* **📊 Real-time Stats & Analytics Dashboard:** Live breakdown of total extracted proxies, duplicate removal counts, filtering of spam/fake secrets, individual protocol counts, and lowest/average latency stats.
 * **📥 Live Subscription Downloader:** Fetch fresh proxies directly from 10 public curated sources with a single click.
 * **⚙️ Complete Subscription Manager:** Toggle built-in sources, add custom subscription URLs, remove, or reset sources with automatic browser storage persistence.
-* **⚡ Optional Fast TCP Pre-check:** Toggle TCP pre-checking with a checkbox to quickly discard closed ports (5x-10x faster scans under normal internet). Easily disable it during national internet throttling so slower proxies aren't falsely rejected.
-* **🎯 Network & Speed Presets:**
-  * 🚀 **Fast:** Timeout 5s | Concurrency 25 | TCP Pre-check ON (ideal for stable networks).
-  * ⚖️ **Balanced (Default):** Timeout 10s | Concurrency 10 | TCP Pre-check ON (general purpose).
-  * 🐢 **National Net / Throttling:** Timeout 60s | Concurrency 5 | No Pre-check (for severe filtering / high latency).
-  * 🛠️ **Custom:** Set any timeout and concurrency you want.
+* **🎯 Intelligent Speed & Network Presets (Smart Presets):**
+  * 🚀 **Turbo Scan:** Timeout 3s | Concurrency 30 | TCP Pre-check ON (fastest filter for high-volume lists).
+  * ⚖️ **Smart Balanced (Default):** Timeout 8s | Concurrency 15 | TCP Pre-check ON (ideal everyday efficiency).
+  * 🛡️ **Anti-Censorship / Intranet:** Timeout 25s | Concurrency 8 | No Pre-check (deep tunnel verification through strict firewalls).
+  * 🐢 **Deep Recovery:** Timeout 45s | Concurrency 5 | No Pre-check (recover slow but working proxies).
+  * 🛠️ **Custom:** Set any custom timeout and concurrency.
 * **🚀 Direct 1-Click Launch into Telegram Desktop:** Sends the lowest ping working proxy directly to Telegram Desktop with full Windows OS integration.
 * **📋 Configurable Top N Copy:** Copy the top 5, 10, 20, or custom N working proxies sorted by lowest ping.
+* **💾 Clean Export Formats:** Dedicated buttons for "Download Text File" and "Download JSON".
 * **⏹️ Instant Stop Button:** Pause or cancel checks at any point.
-* **💾 Export Formats:** Download clean `.txt` or structured `.json` result files.
+* **🎨 Custom Vector Favicon & Modern Theme:** Custom Telegram airplane badge with verified green checkmark.
 * **Pure JavaScript (No C++ Build Tools):** Built with **GramJS** and native Node.js sockets. No compile issues or Visual Studio required.
-* **Windows Standalone EXE:** Build a standalone `dist/mtproto-checker.exe` using `npm run build:win`.
+* **Automated Multi-Version Release Workflow:** GitHub Actions release workflow prompting for custom version tags.
 
 ## 🚀 Installation & Running
 

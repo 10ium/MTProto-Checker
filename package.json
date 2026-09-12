@@ -1,16 +1,17 @@
 {
-  "name": "mtproto_checker",
+  "name": "telegram-proxy-checker",
   "version": "1.0.0",
-  "description": "",
+  "description": "Comprehensive Telegram Proxy Checker (MTProto, SOCKS5, HTTP, WebProxy)",
   "main": "app.js",
   "bin": "app.js",
   "scripts": {
     "start": "node app.js",
-    "build:win": "pkg app.js --targets node18-win-x64 --output dist/mtproto-checker.exe"
+    "build:win": "pkg app.js --targets node18-win-x64 --output dist/Telegram-Proxy-Checker.exe"
   },
   "pkg": {
     "assets": [
-      "index.html"
+      "index.html",
+      "favicon.svg"
     ]
   },
   "keywords": [],

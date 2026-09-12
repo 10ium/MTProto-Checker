@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'شماره نسخه برای انتشار (Release Version - e.g. v1.1.0)'
+        required: true
+        default: 'v1.1.0'
 
 permissions:
   contents: write
@@ -23,6 +28,33 @@ jobs:
           node-version: 18
           cache: npm
 
+      - name: Determine Version
+        id: get_version
+        shell: pwsh
+        run: |
+          if ("${{ github.event.inputs.version }}" -ne "") {
+            $ver = "${{ github.event.inputs.version }}".Trim()
+          } elseif ("${{ github.ref_name }}" -ne "") {
+            $ver = "${{ github.ref_name }}".Trim()
+          } else {
+            $ver = "v1.1.0"
+          }
+          if (-not $ver.StartsWith("v")) {
+            $tag = "v" + $ver
+            $cleanVer = $ver
+          } else {
+            $tag = $ver
+            $cleanVer = $ver.Substring(1)
+          }
+          Write-Output "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+          Write-Output "CLEAN_VERSION=$cleanVer" >> $env:GITHUB_ENV
+          Write-Host "Configured Release Tag: $tag, Version: $cleanVer"
+
+      - name: Update package.json Version
+        shell: pwsh
+        run: |
+          npm version $env:CLEAN_VERSION --no-git-tag-version --allow-same-version
+
       - name: Install dependencies
         run: npm ci
 
@@ -30,13 +62,20 @@ jobs:
         run: npm install -g pkg
 
       - name: Build Windows EXE
-        run: npm run build:win
+        shell: pwsh
+        run: |
+          pkg app.js --targets node18-win-x64 --output "dist/Telegram-Proxy-Checker-$env:RELEASE_TAG-win-x64.exe"
+          Copy-Item "dist/Telegram-Proxy-Checker-$env:RELEASE_TAG-win-x64.exe" "dist/Telegram-Proxy-Checker.exe"
+          Compress-Archive -Path "dist/Telegram-Proxy-Checker-$env:RELEASE_TAG-win-x64.exe", "README.md", "README_FA.md", "LICENSE" -DestinationPath "dist/Telegram-Proxy-Checker-$env:RELEASE_TAG-windows-x64.zip"
 
-      - name: Create release and upload asset
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/mtproto-checker.exe
+          name: "Telegram Proxy Checker ${{ env.RELEASE_TAG }}"
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            dist/Telegram-Proxy-Checker-${{ env.RELEASE_TAG }}-win-x64.exe
+            dist/Telegram-Proxy-Checker-${{ env.RELEASE_TAG }}-windows-x64.zip
           generate_release_notes: true
-          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

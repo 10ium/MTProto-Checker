@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b1329" />
+      <stop offset="100%" stop-color="#1e2e4a" />
+    </linearGradient>
+    <linearGradient id="planeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  
+  <!-- پس‌زمینه مربعی گوشه گرد مدرن -->
+  <rect width="128" height="128" rx="28" fill="url(#bgGrad)" stroke="#2c4267" stroke-width="2.5"/>
+  
+  <!-- هواپیمای کاغذی تلگرام -->
+  <g filter="url(#shadow)">
+    <path fill="url(#planeGrad)" d="M26,62 L102,26 L88,102 L58,74 L40,90 L44,66 Z" />
+    <path fill="#ffffff" opacity="0.92" d="M58,74 L88,38 L48,64 Z" />
+  </g>
+  
+  <!-- نشان تایید سلامت (Verified Check Shield Badge) -->
+  <circle cx="96" cy="96" r="22" fill="#0b1329" stroke="#1e2e4a" stroke-width="2"/>
+  <circle cx="96" cy="96" r="18" fill="url(#checkGrad)"/>
+  <path d="M88,96 L93,101 L104,90" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
