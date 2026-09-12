@@ -568,19 +568,19 @@
             <div class="config-item" style="flex: 2;">
                 <label for="profilePreset" data-i18n="profileLabel">🎯 پروفایل هوشمند سرعت و شبکه</label>
                 <select id="profilePreset" class="preset-select" onchange="applyProfile(this.value)">
-                    <option value="turbo" data-i18n="pTurbo">🚀 سریع (تایم‌اوت 5s | همزمانی 75 | پیش‌چک فعال)</option>
-                    <option value="balanced" selected data-i18n="pBalanced">⚖️ متعادل (تایم‌اوت 10s | همزمانی 50 | پیش‌چک فعال)</option>
-                    <option value="national" data-i18n="pNational">🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)</option>
+                    <option value="turbo" data-i18n="pTurbo">🚀 سریع (تایم‌اوت 3s | همزمانی 50 | پیش‌چک فعال)</option>
+                    <option value="balanced" selected data-i18n="pBalanced">⚖️ متعادل (تایم‌اوت 5s | همزمانی 25 | پیش‌چک فعال)</option>
+                    <option value="national" data-i18n="pNational">🐢 اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)</option>
                     <option value="custom" data-i18n="pCustom">🛠️ سفارشی (تنظیم دستی کاربر)</option>
                 </select>
             </div>
             <div class="config-item">
                 <label for="timeoutSeconds" data-i18n="timeoutLabel">⏱️ تاخیر هر پروکسی (ثانیه)</label>
-                <input id="timeoutSeconds" type="number" value="10" min="1" max="180" oninput="markCustomProfile()">
+                <input id="timeoutSeconds" type="number" value="5" min="1" max="180" oninput="markCustomProfile()">
             </div>
             <div class="config-item">
                 <label for="concurrency" data-i18n="concurrencyLabel">⚙️ تعداد بررسی همزمان</label>
-                <input id="concurrency" type="number" value="50" min="1" max="150" oninput="markCustomProfile()">
+                <input id="concurrency" type="number" value="25" min="1" max="150" oninput="markCustomProfile()">
             </div>
             <div class="config-item" style="flex: 0 0 auto;">
                 <label>&nbsp;</label>
@@ -732,9 +732,9 @@
             subtitle: "تست اتصال واقعی و تخصصی هر ۴ پروتکل رسمی تلگرام (MTProto, SOCKS5, HTTP, WebProxy)",
             btnManageSubs: "⚙️ مدیریت سابسکریپشن‌ها",
             profileLabel: "🎯 پروفایل هوشمند سرعت و شبکه",
-            pTurbo: "🚀 سریع (تایم‌اوت 5s | همزمانی 75 | پیش‌چک فعال)",
-            pBalanced: "⚖️ متعادل (تایم‌اوت 10s | همزمانی 50 | پیش‌چک فعال)",
-            pNational: "🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)",
+            pTurbo: "🚀 سریع (تایم‌اوت 3s | همزمانی 50 | پیش‌چک فعال)",
+            pBalanced: "⚖️ متعادل (تایم‌اوت 5s | همزمانی 25 | پیش‌چک فعال)",
+            pNational: "🐢 اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)",
             pCustom: "🛠️ سفارشی (تنظیم دستی کاربر)",
             timeoutLabel: "⏱️ تاخیر هر پروکسی (ثانیه)",
             concurrencyLabel: "⚙️ تعداد بررسی همزمان",
@@ -784,9 +784,9 @@
             subtitle: "Real protocol verification of all 4 official Telegram proxies (MTProto, SOCKS5, HTTP, WebProxy)",
             btnManageSubs: "⚙️ Manage Subscriptions",
             profileLabel: "🎯 Network & Speed Preset",
-            pTurbo: "🚀 Fast (Timeout 5s | Concurrency 75 | Pre-check ON)",
-            pBalanced: "⚖️ Balanced (Timeout 10s | Concurrency 50 | Pre-check ON)",
-            pNational: "🐢 National Net / Intranet (Timeout 60s | Concurrency 10 | No Pre-check)",
+            pTurbo: "🚀 Fast (Timeout 3s | Concurrency 50 | Pre-check ON)",
+            pBalanced: "⚖️ Balanced (Timeout 5s | Concurrency 25 | Pre-check ON)",
+            pNational: "🐢 Heavy Censorship / Intranet (Timeout 60s | Concurrency 10 | No Pre-check)",
             pCustom: "🛠️ Custom (Manual Settings)",
             timeoutLabel: "⏱️ Per-proxy timeout (seconds)",
             concurrencyLabel: "⚙️ Concurrent checks",
@@ -863,12 +863,12 @@
         const precheckInput = document.getElementById('enableTcpPrecheck');
 
         if (profileName === 'turbo') {
-            timeoutInput.value = 5;
-            concInput.value = 75;
+            timeoutInput.value = 3;
+            concInput.value = 50;
             precheckInput.checked = true;
         } else if (profileName === 'balanced') {
-            timeoutInput.value = 10;
-            concInput.value = 50;
+            timeoutInput.value = 5;
+            concInput.value = 25;
             precheckInput.checked = true;
         } else if (profileName === 'national') {
             timeoutInput.value = 60;

@@ -19,11 +19,10 @@ A powerful, pure Node.js tool to verify **all 4 official Telegram proxy protocol
 * **📥 Live Subscription Downloader:** Fetch fresh proxies directly from 10 public curated sources with a single click.
 * **⚙️ Complete Subscription Manager:** Toggle built-in sources, add custom subscription URLs, remove, or reset sources with automatic browser storage persistence.
 * **🎯 Intelligent Speed & Network Presets (Smart Presets):**
-  * 🚀 **Turbo Scan:** Timeout 3s | Concurrency 30 | TCP Pre-check ON (fastest filter for high-volume lists).
-  * ⚖️ **Smart Balanced (Default):** Timeout 8s | Concurrency 15 | TCP Pre-check ON (ideal everyday efficiency).
-  * 🛡️ **Anti-Censorship / Intranet:** Timeout 25s | Concurrency 8 | No Pre-check (deep tunnel verification through strict firewalls).
-  * 🐢 **Deep Recovery:** Timeout 45s | Concurrency 5 | No Pre-check (recover slow but working proxies).
-  * 🛠️ **Custom:** Set any custom timeout and concurrency.
+  * 🚀 **Fast:** Timeout 3s | Concurrency 50 | TCP Pre-check ON (quick scanning of massive proxy dumps).
+  * ⚖️ **Balanced (Default):** Timeout 5s | Concurrency 25 | TCP Pre-check ON (ideal balance between speed and reliability).
+  * 🐢 **Heavy Censorship / Intranet:** Timeout 60s (1 min) | Concurrency 10 | No Pre-check (deep inspection during extreme network disruptions).
+  * 🛠️ **Custom:** Set any custom timeout and concurrency manually.
 * **🚀 Direct 1-Click Launch into Telegram Desktop:** Sends the lowest ping working proxy directly to Telegram Desktop with full Windows OS integration.
 * **📋 Configurable Top N Copy:** Copy the top 5, 10, 20, or custom N working proxies sorted by lowest ping.
 * **💾 Clean Export Formats:** Dedicated buttons for "Download Text File" and "Download JSON".
