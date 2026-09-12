@@ -2,10 +2,16 @@
   "name": "mtproto_checker",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
+  "bin": "app.js",
   "scripts": {
     "start": "node app.js",
     "build:win": "pkg app.js --targets node18-win-x64 --output dist/mtproto-checker.exe"
+  },
+  "pkg": {
+    "assets": [
+      "index.html"
+    ]
   },
   "keywords": [],
   "author": "",

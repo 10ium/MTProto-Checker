@@ -1,553 +1,602 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
+const net = require('net');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const API_ID = 6;
 const API_HASH = 'eb06d4abfb49dc3eeb1aeb98ae0f581e';
 
+// آی‌پی سرور دیتاسنتر اصلی تلگرام جهت اعتبارسنجی اتصال SOCKS5
+const TELEGRAM_DC2_IP = '91.108.56.111';
+const TELEGRAM_DC2_PORT = 443;
+
+// افزایش سقف حجم بادی درخواست‌ها
 app.use(bodyParser.json({ limit: '50mb' }));
 
-function openInBrowser(url) {
+// منابع پیش‌فرض اشتراک پروکسی (۱۰ منبع معتبر و تست‌شده)
+const DEFAULT_SUBSCRIPTIONS = [
+    { name: '10Dream Collector', url: 'https://raw.githubusercontent.com/10Dream/VpnClashFaCollector/refs/heads/main/sub/all/tg.txt', enabled: true },
+    { name: '10ium Collector (1000+ Proxies)', url: 'https://raw.githubusercontent.com/10ium/VpnClashFaCollector/refs/heads/main/sub/all/tg.txt', enabled: true },
+    { name: 'Argh94 List', url: 'https://raw.githubusercontent.com/Argh94/Proxy-List/refs/heads/main/MTProto.txt', enabled: true },
+    { name: 'Surfboard TGProto', url: 'https://raw.githubusercontent.com/Surfboardv2ray/TGProto/refs/heads/main/proxies-tested.txt', enabled: true },
+    { name: 'SoliSpirit Master', url: 'https://raw.githubusercontent.com/SoliSpirit/mtproto/refs/heads/master/all_proxies.txt', enabled: true },
+    { name: 'Therealwh Verified', url: 'https://raw.githubusercontent.com/Therealwh/MTPproxyLIST/refs/heads/main/verified/proxy_all_tme_verified.txt', enabled: true },
+    { name: 'MustafaBaqer VestraNet', url: 'https://raw.githubusercontent.com/MustafaBaqer/VestraNet-Nodes/refs/heads/main/protocols/mtproto.txt', enabled: true },
+    { name: 'kort0881 Proxy All', url: 'https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/proxy_all.txt', enabled: true },
+    { name: 'kort0881 SOCKS5 List', url: 'https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/main/socks5.txt', enabled: true },
+    { name: 'kort0881 Proxy List (700+)', url: 'https://raw.githubusercontent.com/kort0881/telegram-proxy-collector/refs/heads/main/proxy_list.txt', enabled: true }
+];
+
+// باز کردن URL در سیستم‌عامل (ویندوز، مک، لینوکس)
+function openSystemUrl(url) {
     const command = process.platform === 'win32'
         ? `start "" "${url}"`
         : process.platform === 'darwin'
             ? `open "${url}"`
             : `xdg-open "${url}"`;
     exec(command, (err) => {
-        if (err) console.log('Could not open browser automatically.');
+        if (err) console.log('Could not open system URL:', err.message);
     });
 }
 
-const htmlContent = `
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MTProto Ultimate Checker</title>
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --input: #334155;
-            --text: #f8fafc;
-            --muted: #94a3b8;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --success: #10b981;
-            --error: #ef4444;
-            --font-fa: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --font-en: 'Inter', system-ui, -apple-system, sans-serif;
+// پیش‌چک سریع پورت TCP جهت رد کردن فوری پروکسی‌های قطع‌شده
+function quickTcpCheck(host, port, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        let finished = false;
+
+        const done = (isReachable) => {
+            if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                try { socket.destroy(); } catch (e) {}
+                resolve(isReachable);
+            }
+        };
+
+        const timer = setTimeout(() => done(false), timeoutMs);
+
+        socket.on('connect', () => done(true));
+        socket.on('error', () => done(false));
+
+        try {
+            socket.connect(port, host);
+        } catch (e) {
+            done(false);
         }
+    });
+}
 
-        body {
-            font-family: var(--font-fa);
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            min-height: 100vh;
-            transition: all 0.3s ease;
-        }
+// تست بومی و کامل اتصال پروکسی SOCKS5 به سرور هسته مرکزی تلگرام
+function checkSocks5Proxy(host, port, user, pass, timeoutMs = 8000) {
+    return new Promise((resolve) => {
+        const start = Date.now();
+        const socket = new net.Socket();
+        let finished = false;
 
-        html[dir="ltr"] body { font-family: var(--font-en); }
-        html[dir="ltr"] .debug-console { text-align: left; }
-        
-        .container {
-            width: 100%;
-            max-width: 1100px;
-            background-color: var(--card);
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            position: relative;
-        }
+        const done = (ping) => {
+            if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                try { socket.destroy(); } catch (e) {}
+                resolve(ping);
+            }
+        };
 
-        .header-controls {
-            position: absolute;
-            top: 25px;
-            left: 25px;
-            z-index: 10;
-        }
-        html[dir="ltr"] .header-controls {
-            left: auto;
-            right: 25px;
-        }
+        const timer = setTimeout(() => done(-1), timeoutMs);
 
-        /* --- اصلاح استایل منوی زبان --- */
-        select.lang-select {
-            background-color: var(--input);
-            color: var(--text);
-            border: 1px solid #475569;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            cursor: pointer;
-            outline: none;
-            font-family: inherit;
-            transition: 0.2s;
-            appearance: none;
-            -webkit-appearance: none;
-            
-            /* تنظیمات پیش‌فرض (فارسی - RTL) */
-            /* فلش در سمت چپ قرار می‌گیرد */
-            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23cbd5e1%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat;
-            background-size: 10px;
-            
-            background-position: left 10px center;
-            padding-left: 30px; /* جای خالی برای فلش سمت چپ */
-            padding-right: 12px;
-        }
+        socket.on('error', () => done(-1));
+        socket.on('timeout', () => done(-1));
 
-        /* تنظیمات انگلیسی (LTR) */
-        html[dir="ltr"] select.lang-select {
-            /* فلش در سمت راست قرار می‌گیرد */
-            background-position: right 10px center;
-            padding-right: 30px; /* جای خالی برای فلش سمت راست */
-            padding-left: 12px;
-        }
-
-        select.lang-select:hover {
-            border-color: var(--accent);
-            background-color: #3f4a5e;
-        }
-
-        h1 { text-align: center; color: var(--accent); margin: 0; margin-top: 5px; }
-        p.sub { text-align: center; color: var(--muted); margin: 5px 0 20px 0; font-size: 14px; }
-
-        .progress-box { background: var(--input); height: 8px; border-radius: 4px; overflow: hidden; }
-        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #60a5fa); transition: width 0.3s ease; }
-        .status-text { text-align: center; font-size: 13px; color: var(--muted); margin-top: 5px; direction: ltr; }
-
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media(max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-        @media(max-width: 768px) { .settings-grid { grid-template-columns: 1fr; } }
-
-        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; }
-        .settings-grid label { margin-bottom: 6px; }
-        .settings-grid input {
-            width: 100%;
-            box-sizing: border-box;
-            background-color: var(--input);
-            color: #e2e8f0;
-            border: 1px solid #475569;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 13px;
-            outline: none;
-        }
-        .settings-grid input:focus { border-color: var(--accent); }
-        
-        textarea {
-            width: 100%; height: 350px; background-color: var(--input); color: #e2e8f0;
-            border: 1px solid #475569; border-radius: 10px; padding: 15px;
-            font-family: monospace; font-size: 11px; resize: vertical; outline: none;
-            line-height: 1.5; box-sizing: border-box;
-        }
-        textarea:focus { border-color: var(--accent); }
-
-        button {
-            width: 100%; padding: 14px; margin-top: 10px; border: none; border-radius: 10px;
-            font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; color: white; font-family: inherit;
-        }
-
-        .btn-start { background-color: var(--accent); }
-        .btn-start:hover { background-color: var(--accent-hover); }
-        .btn-start:disabled { background-color: #475569; cursor: not-allowed; opacity: 0.7; }
-
-        .btn-copy { background-color: var(--success); }
-        .btn-copy:hover { background-color: #059669; }
-
-        .debug-console {
-            background: black; color: #00ff00; font-family: monospace; font-size: 11px;
-            padding: 10px; height: 80px; overflow-y: auto; border-radius: 8px;
-            border: 1px solid #333; direction: ltr; text-align: left; margin-top: 10px;
-        }
-        .error-log { color: #ff5555; }
-
-        .toast {
-            visibility: hidden; min-width: 250px; background-color: #333; color: #fff;
-            text-align: center; border-radius: 8px; padding: 12px; position: fixed;
-            z-index: 99; left: 50%; bottom: 30px; transform: translateX(-50%);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
-        }
-        .toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="header-controls">
-        <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
-            <option value="fa">🇮🇷 فارسی</option>
-            <option value="en">🇺🇸 English</option>
-        </select>
-    </div>
-
-    <div>
-        <h1 data-i18n="title">MTProto Pro Checker</h1>
-        <p class="sub" data-i18n="subtitle">تست اتصال</p>
-        
-        <div class="progress-box"><div class="progress-bar" id="progressBar"></div></div>
-        <div class="status-text" id="statusText" data-i18n="ready">آماده...</div>
-    </div>
-
-    <div class="grid">
-        <div>
-            <label data-i18n="inputLabel">📥 لیست ورودی</label>
-            <div class="settings-grid">
-                <div>
-                    <label for="timeoutSeconds" data-i18n="timeoutLabel">⏱️ تاخیر هر پروکسی (ثانیه)</label>
-                    <input id="timeoutSeconds" type="number" value="10">
-                </div>
-                <div>
-                    <label for="concurrency" data-i18n="concurrencyLabel">⚙️ تعداد بررسی همزمان</label>
-                    <input id="concurrency" type="number" value="10">
-                </div>
-            </div>
-            <textarea id="inputProxies" placeholder="..."></textarea>
-            <button class="btn-start" id="startBtn" onclick="startCheck()" data-i18n="startBtn">شروع بررسی</button>
-        </div>
-        <div>
-            <label data-i18n="outputLabel">🚀 لیست سالم</label>
-            <textarea id="outputProxies" readonly placeholder="..."></textarea>
-            <button class="btn-copy" onclick="copyResults()" data-i18n="copyBtn">کپی لیست سالم</button>
-        </div>
-    </div>
-
-    <div class="debug-console" id="console">
-        > System Ready.
-    </div>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script>
-    const translations = {
-        fa: {
-            title: "MTProto Pro Checker",
-            subtitle: "تست اتصال",
-            ready: "آماده برای شروع...",
-            inputLabel: "📥 لیست ورودی (کثیف و نامرتب)",
-            inputPlaceholder: "لینک‌های پروکسی را اینجا وارد کنید (هر خط یک لینک)...",
-            startBtn: "شروع بررسی",
-            outputLabel: "🚀 لیست ۱۰۰٪ سالم",
-            outputPlaceholder: "نتایج سالم اینجا نمایش داده می‌شوند...",
-            timeoutLabel: "⏱️ تاخیر هر پروکسی (ثانیه)",
-            concurrencyLabel: "⚙️ تعداد بررسی همزمان",
-            copyBtn: "کپی کردن لیست سالم",
-            processing: "در حال پردازش...",
-            status: "وضعیت: {c} / {t} | سالم: {w}",
-            toastCopied: "✅ کپی شد!",
-            toastEmpty: "⚠️ لیست خالی است!",
-            toastNoValid: "⛔ هیچ لینک معتبری یافت نشد!",
-            toastNoWorking: "😔 هیچ پروکسی سالمی پیدا نشد.",
-            toastFound: "🎉 {n} پروکسی سالم پیدا شد!",
-            errorGeneric: "خطایی رخ داد. کنسول را چک کنید."
-        },
-        en: {
-            title: "MTProto Pro Checker",
-            subtitle: "Real connection test",
-            ready: "Ready to start...",
-            inputLabel: "📥 Input List (Mixed/Dirty)",
-            inputPlaceholder: "Paste proxy links here (one per line)...",
-            startBtn: "Start Check",
-            outputLabel: "🚀 Working Proxies (100%)",
-            outputPlaceholder: "Working proxies will appear here...",
-            timeoutLabel: "⏱️ Per-proxy timeout (seconds)",
-            concurrencyLabel: "⚙️ Concurrent checks",
-            copyBtn: "Copy Working List",
-            processing: "Processing...",
-            status: "Status: {c} / {t} | Working: {w}",
-            toastCopied: "✅ Copied to clipboard!",
-            toastEmpty: "⚠️ List is empty!",
-            toastNoValid: "⛔ No valid links found!",
-            toastNoWorking: "😔 No working proxies found.",
-            toastFound: "🎉 Found {n} working proxies!",
-            errorGeneric: "An error occurred. Check console."
-        }
-    };
-
-    let currentLang = localStorage.getItem('lang') || 'fa';
-
-    function setLanguage(lang) {
-        currentLang = lang;
-        localStorage.setItem('lang', lang);
-        
-        document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
-        document.documentElement.lang = lang;
-        document.getElementById('langSelect').value = lang;
-
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-            const key = el.getAttribute('data-i18n');
-            if (translations[lang][key]) el.innerText = translations[lang][key];
+        socket.connect(port, host, () => {
+            // ۱. ارسال سیگنال اولیه SOCKS5
+            const hasAuth = user && user.length > 0;
+            if (hasAuth) {
+                socket.write(Buffer.from([0x05, 0x02, 0x00, 0x02]));
+            } else {
+                socket.write(Buffer.from([0x05, 0x01, 0x00]));
+            }
         });
 
-        document.getElementById('inputProxies').placeholder = translations[lang].inputPlaceholder;
-        document.getElementById('outputProxies').placeholder = translations[lang].outputPlaceholder;
+        let stage = 'greeting';
+        let buffer = Buffer.alloc(0);
+
+        socket.on('data', (chunk) => {
+            buffer = Buffer.concat([buffer, chunk]);
+
+            if (stage === 'greeting') {
+                if (buffer.length < 2) return;
+                if (buffer[0] !== 0x05) return done(-1);
+
+                const method = buffer[1];
+                buffer = buffer.slice(2);
+
+                if (method === 0x02) { // نیازمند احراز هویت User/Pass
+                    const uBytes = Buffer.from(user || '', 'utf-8');
+                    const pBytes = Buffer.from(pass || '', 'utf-8');
+                    const authReq = Buffer.concat([
+                        Buffer.from([0x01, uBytes.length]),
+                        uBytes,
+                        Buffer.from([pBytes.length]),
+                        pBytes
+                    ]);
+                    stage = 'auth';
+                    socket.write(authReq);
+                } else if (method === 0x00) { // بدون نیاز به پسورد
+                    sendTelegramConnect();
+                } else {
+                    return done(-1);
+                }
+            } else if (stage === 'auth') {
+                if (buffer.length < 2) return;
+                if (buffer[1] !== 0x00) return done(-1); // احراز هویت ناموفق
+                buffer = buffer.slice(2);
+                sendTelegramConnect();
+            } else if (stage === 'connect') {
+                if (buffer.length < 4) return;
+                if (buffer[0] !== 0x05 || buffer[1] !== 0x00) return done(-1); // اتصال تونل برقرار نشد
+
+                // موفقیت: تونل امن SOCKS5 به سرور اصلی تلگرام متصل شد!
+                const ping = Date.now() - start;
+                done(ping);
+            }
+        });
+
+        function sendTelegramConnect() {
+            stage = 'connect';
+            // ارسال دستور CONNECT به سرور دیتاسنتر ۲ تلگرام (91.108.56.111:443)
+            const ipParts = TELEGRAM_DC2_IP.split('.').map(x => parseInt(x));
+            const conn = Buffer.from([
+                0x05, 0x01, 0x00, 0x01,
+                ipParts[0], ipParts[1], ipParts[2], ipParts[3],
+                (TELEGRAM_DC2_PORT >> 8) & 0xff,
+                TELEGRAM_DC2_PORT & 0xff
+            ]);
+            socket.write(conn);
+        }
+    });
+}
+
+// تست بومی و کامل اتصال پروکسی HTTP/HTTPS به سرور هسته مرکزی تلگرام (HTTP CONNECT)
+function checkHttpProxy(host, port, user, pass, timeoutMs = 8000) {
+    return new Promise((resolve) => {
+        const start = Date.now();
+        const socket = new net.Socket();
+        let finished = false;
+
+        const done = (ping) => {
+            if (!finished) {
+                finished = true;
+                clearTimeout(timer);
+                try { socket.destroy(); } catch (e) {}
+                resolve(ping);
+            }
+        };
+
+        const timer = setTimeout(() => done(-1), timeoutMs);
+
+        socket.on('error', () => done(-1));
+        socket.on('timeout', () => done(-1));
+
+        socket.connect(port, host, () => {
+            let req = `CONNECT ${TELEGRAM_DC2_IP}:${TELEGRAM_DC2_PORT} HTTP/1.1\r\n` +
+                      `Host: ${TELEGRAM_DC2_IP}:${TELEGRAM_DC2_PORT}\r\n` +
+                      `Proxy-Connection: Keep-Alive\r\n`;
+            if (user) {
+                const creds = Buffer.from(`${user}:${pass || ''}`).toString('base64');
+                req += `Proxy-Authorization: Basic ${creds}\r\n`;
+            }
+            req += '\r\n';
+            socket.write(req);
+        });
+
+        let responseText = '';
+        socket.on('data', (chunk) => {
+            responseText += chunk.toString('utf-8');
+            if (responseText.includes('\r\n\r\n') || responseText.includes('\n\n')) {
+                const statusLine = responseText.split('\n')[0];
+                if (statusLine.includes(' 200 ') || statusLine.includes(' 200')) {
+                    const ping = Date.now() - start;
+                    done(ping);
+                } else {
+                    done(-1);
+                }
+            }
+        });
+    });
+}
+
+function cleanSecretString(str) {
+    if (!str) return '';
+    let s = str.split('#')[0].split('?')[0].split('&')[0].trim();
+    const badChars = ' )!@#$%^&*()_+~[]{}|;:\',.<>?/\t\r\n\x60';
+    let len = s.length;
+    while (len > 0 && badChars.indexOf(s[len - 1]) !== -1) {
+        len--;
     }
+    return s.substring(0, len);
+}
 
-    function changeLanguage(lang) {
-        setLanguage(lang);
-    }
+// استخراج و پارس لینک پروکسی (پشتیبانی جامع از هر ۴ نوع پروکسی تلگرام)
+function parseProxyString(rawLink) {
+    try {
+        let clean = rawLink.trim().replace('.&', '&');
+        if (!clean.includes('://')) return null;
 
-    setLanguage(currentLang);
+        const isWebProxy = clean.includes('/webproxy') || clean.startsWith('tg://webproxy');
+        const isStandardProxy = clean.includes('/proxy') || clean.startsWith('tg://proxy');
+        const isSocks = clean.includes('/socks') || clean.startsWith('tg://socks') || clean.startsWith('socks5://') || clean.startsWith('socks://');
+        const isHttp = clean.includes('/http') || clean.startsWith('tg://http') || (clean.startsWith('http') && clean.includes('@'));
 
-    // ==========================================
-    // منطق اصلی
-    // ==========================================
-    function log(msg, isError = false) {
-        const c = document.getElementById('console');
-        const line = document.createElement('div');
-        line.innerText = \`[\${new Date().toLocaleTimeString()}] \${msg}\`;
-        if (isError) line.className = 'error-log';
-        c.appendChild(line);
-        c.scrollTop = c.scrollHeight;
-    }
+        if (!isWebProxy && !isStandardProxy && !isSocks && !isHttp) return null;
 
-    window.onerror = function(message) {
-        log(\`CRITICAL ERROR: \${message}\`, true);
-    };
-
-    let workingProxies = [];
-    let skippedCount = 0;
-
-    function parseLink(link) {
-        try {
-            let cleanLink = link.trim().replace('.&', '&');
-            if(!cleanLink.includes('://')) return null;
-
-            const urlObj = new URL(cleanLink);
-            const params = new URLSearchParams(urlObj.search);
-            
-            const server = params.get('server');
-            let port = parseInt(params.get('port'));
-            const secret = params.get('secret');
-
-            if (!server || !port || !secret || isNaN(port)) return null;
-            if (port <= 0 || port > 65535) return null;
-
-            if (secret.length > 170 || secret.includes('AAAAAAAAAAAAAAAAAAAA')) {
-                skippedCount++;
-                return null;
+        // نوع ۳: پروکسی HTTP (HTTP CONNECT Tunnel)
+        if (isHttp) {
+            let server, port, user = null, pass = null;
+            if (clean.startsWith('tg://http') || clean.includes('t.me/http')) {
+                const urlObj = new URL(clean.replace('https://t.me/http', 'tg://http').replace('http://t.me/http', 'tg://http'));
+                const params = new URLSearchParams(urlObj.search);
+                server = params.get('server');
+                port = parseInt(params.get('port')) || 8080;
+                user = params.get('user') || null;
+                pass = params.get('pass') || null;
+            } else {
+                try {
+                    const urlObj = new URL(clean);
+                    server = urlObj.hostname;
+                    port = parseInt(urlObj.port) || 8080;
+                    user = urlObj.username || null;
+                    pass = urlObj.password || null;
+                } catch (e) {
+                    return null;
+                }
             }
 
-            return { server, port, secret, original: cleanLink };
-        } catch (e) { return null; }
+            if (!server || port <= 0 || port > 65535) return null;
+
+            let canonicalUrl = `tg://http?server=${server}&port=${port}`;
+            if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+            if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+            return {
+                server,
+                port,
+                user,
+                pass,
+                protocol: 'http',
+                canonicalUrl,
+                webUrl: canonicalUrl,
+                original: clean
+            };
+        }
+
+        // ۴. نوع چهارم: پروکسی SOCKS5
+        if (isSocks) {
+            if (clean.startsWith('socks5://') || clean.startsWith('socks://')) {
+                const urlObj = new URL(clean);
+                const server = urlObj.hostname;
+                const port = parseInt(urlObj.port) || 1080;
+                const user = urlObj.username || null;
+                const pass = urlObj.password || null;
+                if (!server || port <= 0 || port > 65535) return null;
+
+                let canonicalUrl = `tg://socks?server=${server}&port=${port}`;
+                if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+                if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+                return {
+                    server,
+                    port,
+                    user,
+                    pass,
+                    protocol: 'socks5',
+                    canonicalUrl,
+                    webUrl: canonicalUrl,
+                    original: clean
+                };
+            } else {
+                const urlObj = new URL(clean.replace('https://t.me/socks', 'tg://socks').replace('http://t.me/socks', 'tg://socks'));
+                const params = new URLSearchParams(urlObj.search);
+                const server = params.get('server');
+                const port = parseInt(params.get('port')) || 1080;
+                const user = params.get('user') || null;
+                const pass = params.get('pass') || null;
+                if (!server || port <= 0 || port > 65535) return null;
+
+                let canonicalUrl = `tg://socks?server=${server}&port=${port}`;
+                if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+                if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+                return {
+                    server,
+                    port,
+                    user,
+                    pass,
+                    protocol: 'socks5',
+                    canonicalUrl,
+                    webUrl: canonicalUrl,
+                    original: clean
+                };
+            }
+        }
+
+        const urlObj = new URL(clean);
+        const params = new URLSearchParams(urlObj.search);
+
+        const server = params.get('server');
+        // در webproxy اگر پورت ذکر نشده باشد، پیش‌فرض 443 است
+        let port = parseInt(params.get('port'));
+        if (isNaN(port) || port <= 0) {
+            if (isWebProxy) {
+                port = 443;
+            } else {
+                return null;
+            }
+        }
+        if (port <= 0 || port > 65535) return null;
+
+        let secret = params.get('secret');
+        if (!server || !secret) return null;
+
+        secret = cleanSecretString(secret);
+
+        if (secret.length === 0 || secret.length > 200) return null;
+        if (secret.includes('AAAAAAAAAAAAAAAAAAAA')) return null;
+
+        // تفکیک پروتکل: webproxy یا mtproto
+        const protocol = isWebProxy ? 'webproxy' : 'mtproto';
+        const canonicalUrl = isWebProxy
+            ? `tg://webproxy?server=${server}&port=${port}&secret=${secret}`
+            : `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
+
+        const webUrl = isWebProxy
+            ? `https://t.me/webproxy?server=${server}&port=${port}&secret=${secret}`
+            : `https://t.me/proxy?server=${server}&port=${port}&secret=${secret}`;
+
+        return {
+            server,
+            port,
+            secret,
+            protocol,
+            canonicalUrl,
+            webUrl,
+            original: clean
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+// استخراج تمام لینک‌ها از یک متن بزرگ (شامل سابسکریپشن‌های نامرتب و Base64)
+function extractProxiesFromRawText(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    let content = text.trim();
+    // بررسی دیکود خودکار Base64
+    if (!content.includes('tg://') && !content.includes('t.me/') && !content.includes('socks') && content.length > 20) {
+        try {
+            const decoded = Buffer.from(content, 'base64').toString('utf-8');
+            if (decoded.includes('server=') || decoded.includes('tg://') || decoded.includes('socks')) {
+                content = decoded;
+            }
+        } catch (e) {}
     }
 
-    async function startCheck() {
+    const PROXY_REGEX = /(?:tg:\/\/proxy\?[^\s"'\n\r<>]+|https?:\/\/(?:t\.me|telegram\.me)\/proxy\?[^\s"'\n\r<>]+|tg:\/\/webproxy\?[^\s"'\n\r<>]+|https?:\/\/(?:t\.me|telegram\.me)\/webproxy\?[^\s"'\n\r<>]+|tg:\/\/socks\?[^\s"'\n\r<>]+|https?:\/\/(?:t\.me|telegram\.me)\/socks\?[^\s"'\n\r<>]+|socks5?:\/\/[^\s"'\n\r<>]+|tg:\/\/http\?[^\s"'\n\r<>]+|https?:\/\/(?:t\.me|telegram\.me)\/http\?[^\s"'\n\r<>]+)/gi;
+    const matches = content.match(PROXY_REGEX) || [];
+
+    const list = [];
+    const seen = new Set();
+
+    for (const match of matches) {
+        const parsed = parseProxyString(match);
+        if (parsed) {
+            const key = `${parsed.protocol}:${parsed.server}:${parsed.port}:${parsed.secret || ''}:${parsed.user || ''}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                list.push(parsed);
+            }
+        }
+    }
+
+    // همچنین پردازش خط به خط برای متونی که ممکن است ساختار متفاوت داشته باشند
+    const lines = content.split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('tg://') || trimmed.includes('t.me/') || trimmed.startsWith('socks')) {
+            const parsed = parseProxyString(trimmed);
+            if (parsed) {
+                const key = `${parsed.protocol}:${parsed.server}:${parsed.port}:${parsed.secret || ''}:${parsed.user || ''}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    list.push(parsed);
+                }
+            }
+        }
+    }
+
+    return list;
+}
+
+// اندپوینت دریافت منابع پیش‌فرض
+app.get('/api/default-subscriptions', (req, res) => {
+    res.json({ ok: true, sources: DEFAULT_SUBSCRIPTIONS });
+});
+
+// اندپوینت دریافت موازی لینک‌های سابسکریپشن آنلاین
+app.post('/api/fetch-subscriptions', async (req, res) => {
+    const urls = Array.isArray(req.body.urls) && req.body.urls.length > 0
+        ? req.body.urls
+        : DEFAULT_SUBSCRIPTIONS.filter(s => s.enabled).map(s => s.url);
+
+    const results = [];
+    const errors = [];
+
+    await Promise.all(urls.map(async (url) => {
         try {
-            const t = translations[currentLang];
-            const input = document.getElementById('inputProxies').value;
-            
-            if (!input) return showToast(t.toastEmpty, true);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000);
 
-            const lines = input.split('\\n');
-            skippedCount = 0;
-            const validLinks = lines.map(parseLink).filter(l => l !== null);
-            const timeoutSeconds = Number(document.getElementById('timeoutSeconds').value) > 0
-                ? Number(document.getElementById('timeoutSeconds').value)
-                : 10;
-            const concurrency = Number(document.getElementById('concurrency').value) > 0
-                ? Number(document.getElementById('concurrency').value)
-                : 10;
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+            });
+            clearTimeout(timeoutId);
 
-            if (validLinks.length === 0) {
-                showToast(t.toastNoValid, true);
-                log('Error: No valid links parsed', true);
+            if (!response.ok) {
+                errors.push({ url, error: `HTTP ${response.status}` });
                 return;
             }
 
-            log(\`Parsed \${validLinks.length} valid links. Skipped \${skippedCount} bad links.\`);
-
-            workingProxies = [];
-            document.getElementById('outputProxies').value = '';
-            
-            const startBtn = document.getElementById('startBtn');
-            startBtn.disabled = true;
-            startBtn.innerText = t.processing;
-
-            let completed = 0;
-            const total = validLinks.length;
-
-            const checkOne = async (proxyData) => {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
-
-                    const response = await fetch('/check', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ ...proxyData, timeoutMs: timeoutSeconds * 1000 }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-
-                    if (!response.ok) throw new Error('Server error');
-                    const result = await response.json();
-
-                    if (result.ok) {
-                        workingProxies.push({ link: proxyData.original, ping: result.ping });
-                        updateOutput();
-                        log(\`SUCCESS: \${proxyData.server} (\${result.ping}ms)\`);
-                    }
-                } catch (err) {
-                    // Ignore
-                } finally {
-                    completed++;
-                    updateUI(completed, total);
-                    if (completed === total) finish();
-                }
-            };
-
-            const batchSize = concurrency;
-            for (let i = 0; i < validLinks.length; i += batchSize) {
-                const batch = validLinks.slice(i, i + batchSize);
-                await Promise.all(batch.map(p => checkOne(p)));
-            }
-        } catch (e) {
-            log(\`MAIN ERROR: \${e.message}\`, true);
-            alert(translations[currentLang].errorGeneric);
-            document.getElementById('startBtn').disabled = false;
-        }
-    }
-
-    function updateUI(c, t) {
-        const percent = (c / t) * 100;
-        document.getElementById('progressBar').style.width = percent + '%';
-        let statusText = translations[currentLang].status
-            .replace('{c}', c)
-            .replace('{t}', t)
-            .replace('{w}', workingProxies.length);
-        document.getElementById('statusText').innerText = statusText;
-    }
-
-    function updateOutput() {
-        workingProxies.sort((a, b) => a.ping - b.ping);
-        const text = workingProxies
-            .map(p => \`\${p.link} # Ping: \${p.ping}ms\`)
-            .join('\\n\\n'); 
-        document.getElementById('outputProxies').value = text;
-    }
-
-    function finish() {
-        const t = translations[currentLang];
-        const startBtn = document.getElementById('startBtn');
-        startBtn.disabled = false;
-        startBtn.innerText = t.startBtn;
-        log('Process finished.');
-        
-        if (workingProxies.length > 0) {
-            showToast(t.toastFound.replace('{n}', workingProxies.length));
-        } else {
-            showToast(t.toastNoWorking, true);
-        }
-    }
-
-    function copyResults() {
-        const t = translations[currentLang];
-        const text = document.getElementById("outputProxies").value;
-        if (!text) return showToast(t.toastEmpty, true);
-
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(t.toastCopied);
-            }).catch(() => fallbackCopy(text));
-        } else {
-            fallbackCopy(text);
-        }
-    }
-
-    function fallbackCopy(text) {
-        const t = translations[currentLang];
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed"; 
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            showToast(t.toastCopied);
+            const text = await response.text();
+            const extracted = extractProxiesFromRawText(text);
+            results.push(...extracted);
         } catch (err) {
-            showToast('Error!', true);
+            errors.push({ url, error: err.name === 'AbortError' ? 'Timeout (9s)' : err.message });
         }
-        document.body.removeChild(textArea);
+    }));
+
+    // حذف تکراری‌ها
+    const uniqueMap = new Map();
+    for (const p of results) {
+        const key = `${p.protocol}:${p.server}:${p.port}:${p.secret || ''}:${p.user || ''}`;
+        if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, p);
+        }
     }
 
-    function showToast(message, isError = false) {
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.style.backgroundColor = isError ? "#ef4444" : "#10b981";
-        toast.className = "toast show";
-        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+    const uniqueProxies = Array.from(uniqueMap.values());
+    res.json({
+        ok: true,
+        count: uniqueProxies.length,
+        proxies: uniqueProxies,
+        errors
+    });
+});
+
+// اندپوینت اجرای مستقیم پروکسی در تلگرام ویندوز
+app.post('/api/open-telegram', (req, res) => {
+    const { url } = req.body;
+    if (!url || (!url.startsWith('tg://') && !url.startsWith('https://t.me/'))) {
+        return res.status(400).json({ ok: false, error: 'Invalid telegram proxy url' });
     }
-</script>
-</body>
-</html>
-`;
 
-app.get('/', (req, res) => res.send(htmlContent));
+    const directTgUrl = url.replace('https://t.me/', 'tg://').replace('http://t.me/', 'tg://');
+    openSystemUrl(directTgUrl);
+    res.json({ ok: true });
+});
 
+// اندپوینت تست اتصال دقیق پروکسی (پشتیبانی از MTProto، WebProxy و SOCKS5)
 app.post('/check', async (req, res) => {
-    const { server, port, secret, timeoutMs } = req.body;
+    const { server, port, secret, user, pass, protocol, timeoutMs, enableTcpPrecheck } = req.body;
+    const targetPort = Number(port) || (protocol === 'webproxy' ? 443 : 443);
     const TIMEOUT = Number(timeoutMs) > 0 ? Number(timeoutMs) : 10000;
 
-    const client = new TelegramClient(new StringSession(''), API_ID, API_HASH, {
-        connectionRetries: 1,
-        useWSS: false,
-        proxy: {
-            ip: server,
-            port: port,
-            secret: secret,
-            MTProxy: true,
-            socksType: 5,
-            timeout: Math.max(1, Math.round(TIMEOUT / 1000))
+    // فاز ۱ (اختیاری): پیش‌چک سریع پورت TCP
+    if (enableTcpPrecheck) {
+        const precheckTimeout = Math.min(1500, TIMEOUT);
+        const reachable = await quickTcpCheck(server, targetPort, precheckTimeout);
+        if (!reachable) {
+            return res.json({ ok: false, reason: 'tcp_unreachable' });
         }
-    });
+    }
 
-    client.setLogLevel("none");
-
-    const checkPromise = new Promise(async (resolve, reject) => {
-        const start = Date.now();
-        try {
-            await client.connect();
-            await client.invoke(new Api.help.GetConfig());
-            const ping = Date.now() - start;
-            await client.disconnect();
-            resolve(ping);
-        } catch (err) {
-            try { await client.destroy(); } catch (e) { }
-            reject(err);
+    // فاز ۲: تست اختصاصی نوع پروکسی
+    if (protocol === 'socks5') {
+        // تست پروتکل SOCKS5 به مقصد سرور هسته تلگرام
+        const ping = await checkSocks5Proxy(server, targetPort, user, pass, TIMEOUT);
+        if (ping > 0) {
+            return res.json({ ok: true, ping, server, port: targetPort, protocol: 'socks5' });
+        } else {
+            return res.json({ ok: false, reason: 'socks5_connect_failed' });
         }
-    });
+    }
 
-    const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT)
-    );
+    if (protocol === 'http') {
+        // تست پروتکل HTTP CONNECT به مقصد سرور هسته تلگرام
+        const ping = await checkHttpProxy(server, targetPort, user, pass, TIMEOUT);
+        if (ping > 0) {
+            return res.json({ ok: true, ping, server, port: targetPort, protocol: 'http' });
+        } else {
+            return res.json({ ok: false, reason: 'http_connect_failed' });
+        }
+    }
 
+    // تست MTProto و WebProxy با GramJS
+    let client = null;
     try {
+        client = new TelegramClient(new StringSession(''), API_ID, API_HASH, {
+            connectionRetries: 1,
+            useWSS: false,
+            proxy: {
+                ip: server,
+                port: targetPort,
+                secret: secret,
+                MTProxy: true,
+                socksType: 5,
+                timeout: Math.max(1, Math.round(TIMEOUT / 1000))
+            }
+        });
+
+        client.setLogLevel("none");
+
+        const checkPromise = new Promise(async (resolve, reject) => {
+            const start = Date.now();
+            try {
+                await client.connect();
+                await client.invoke(new Api.help.GetConfig());
+                const ping = Date.now() - start;
+                try { await client.disconnect(); } catch (e) {}
+                resolve(ping);
+            } catch (err) {
+                reject(err);
+            }
+        });
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT)
+        );
+
         const ping = await Promise.race([checkPromise, timeoutPromise]);
-        res.json({ ok: true, ping: ping });
+        res.json({ ok: true, ping, server, port: targetPort, secret, protocol: protocol || 'mtproto' });
     } catch (error) {
-        res.json({ ok: false });
+        res.json({ ok: false, reason: error.message });
+    } finally {
+        if (client) {
+            try { await client.destroy(); } catch (e) {}
+        }
     }
 });
 
-app.listen(PORT, async () => {
+// ==========================================
+// صفحه رابط کاربری مدرن وب
+// ==========================================
+const path = require('path');
+const fs = require('fs');
+
+const indexHtmlPath = path.join(__dirname, 'index.html');
+let htmlContent = '';
+try {
+    htmlContent = fs.readFileSync(indexHtmlPath, 'utf-8');
+} catch (e) {
+    console.error('Failed to read index.html:', e.message);
+}
+
+app.get('/', (req, res) => {
+    if (htmlContent) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(htmlContent);
+    } else {
+        res.sendFile(indexHtmlPath);
+    }
+});
+
+app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
-    openInBrowser(`http://localhost:${PORT}`);
+    openSystemUrl(`http://localhost:${PORT}`);
 });

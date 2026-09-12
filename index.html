@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTProto & WebProxy & SOCKS5 Pro Checker</title>
+    <style>
+        :root {
+            --bg: #0b1329;
+            --card: #152238;
+            --input: #1e2e4a;
+            --input-border: #2c4267;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --success-hover: #059669;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --purple: #8b5cf6;
+            --font-fa: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-en: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-fa);
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        html[dir="ltr"] body { font-family: var(--font-en); }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: var(--card);
+            padding: 25px 30px;
+            border-radius: 18px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            position: relative;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1f3152;
+            padding-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select.lang-select, select.preset-select {
+            background-color: var(--input);
+            color: var(--text);
+            border: 1px solid var(--input-border);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .btn-sub-manage {
+            background-color: #243b5e;
+            color: #93c5fd;
+            border: 1px solid #3b82f6;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .btn-sub-manage:hover {
+            background-color: #1e3a8a;
+            color: #fff;
+        }
+
+        h1 { margin: 0; color: var(--accent); font-size: 24px; }
+        p.sub { margin: 4px 0 0 0; color: var(--muted); font-size: 13px; }
+
+        .progress-box { background: var(--input); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #60a5fa); transition: width 0.2s ease; }
+        .status-bar-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            direction: ltr;
+        }
+
+        .config-card {
+            background: rgba(30, 46, 74, 0.4);
+            border: 1px solid #203557;
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1.5fr;
+            gap: 15px;
+            align-items: center;
+        }
+        @media(max-width: 900px) {
+            .config-row { grid-template-columns: 1fr 1fr; }
+        }
+        @media(max-width: 600px) {
+            .config-row { grid-template-columns: 1fr; }
+        }
+
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .config-item input, .config-item select {
+            width: 100%;
+            background-color: var(--input);
+            color: var(--text);
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 20px;
+            user-select: none;
+        }
+        .checkbox-container input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+
+        .btn-fetch-sub {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-fetch-sub:hover { background: linear-gradient(135deg, #1d4ed8, #1e40af); }
+        .btn-fetch-sub:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .panel-title { font-weight: bold; font-size: 14px; }
+
+        textarea {
+            width: 100%; height: 320px; background-color: var(--input); color: #e2e8f0;
+            border: 1px solid var(--input-border); border-radius: 10px; padding: 12px;
+            font-family: monospace; font-size: 11px; resize: vertical; outline: none;
+            line-height: 1.5; box-sizing: border-box;
+        }
+        textarea:focus { border-color: var(--accent); }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+
+        button.btn {
+            padding: 12px 14px; border: none; border-radius: 8px;
+            font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s;
+            color: white; font-family: inherit; display: flex;
+            align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-start { flex: 2; background-color: var(--accent); }
+        .btn-start:hover { background-color: var(--accent-hover); }
+        .btn-start:disabled { background-color: #334155; cursor: not-allowed; }
+
+        .btn-stop { flex: 1; background-color: var(--error); }
+        .btn-stop:hover { background-color: #dc2626; }
+        .btn-stop:disabled { background-color: #334155; cursor: not-allowed; }
+
+        .output-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-copy-best {
+            background-color: var(--purple);
+            flex: 1;
+            min-width: 180px;
+        }
+        .btn-copy-best:hover { background-color: #7c3aed; }
+
+        .btn-copy-top {
+            background-color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-copy-top:hover { background-color: var(--success-hover); }
+
+        .top-n-input {
+            width: 50px;
+            background: #064e3b;
+            color: #fff;
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 13px;
+            text-align: center;
+            font-weight: bold;
+            outline: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        .btn-outline:hover { background: #1e293b; color: #fff; }
+
+        .debug-console {
+            background: #050b14; color: #22c55e; font-family: monospace; font-size: 11px;
+            padding: 10px 14px; height: 90px; overflow-y: auto; border-radius: 8px;
+            border: 1px solid #192a47; direction: ltr; text-align: left;
+        }
+        .log-error { color: #f87171; }
+        .log-warn { color: #fbbf24; }
+
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card); border: 1px solid #294066;
+            width: 90%; max-width: 700px; max-height: 85vh; border-radius: 14px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        }
+        .modal-header {
+            padding: 16px 20px; border-bottom: 1px solid #1e314f;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-title { font-weight: bold; font-size: 16px; color: #60a5fa; }
+        .modal-close { background: none; border: none; color: #94a3b8; font-size: 20px; cursor: pointer; }
+        .modal-close:hover { color: #fff; }
+        .modal-body {
+            padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+        }
+        .sub-list { display: flex; flex-direction: column; gap: 8px; }
+        .sub-item {
+            background: var(--input); border: 1px solid var(--input-border);
+            padding: 10px 14px; border-radius: 8px; display: flex; align-items: center;
+            justify-content: space-between; gap: 10px;
+        }
+        .sub-info { flex: 1; min-width: 0; }
+        .sub-name { font-weight: bold; font-size: 13px; color: #f1f5f9; }
+        .sub-url { font-size: 11px; color: #94a3b8; word-break: break-all; direction: ltr; text-align: left; }
+        .sub-actions { display: flex; align-items: center; gap: 8px; }
+        .sub-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 4px; }
+        .sub-del:hover { color: #f87171; }
+
+        .add-sub-box {
+            display: flex; gap: 8px; margin-top: 10px;
+        }
+        .add-sub-box input {
+            flex: 1; background: var(--input); color: #fff; border: 1px solid var(--input-border);
+            padding: 8px 10px; border-radius: 6px; font-size: 12px; outline: none;
+        }
+        .btn-add-sub {
+            background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+            border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;
+        }
+
+        .modal-footer {
+            padding: 14px 20px; border-top: 1px solid #1e314f;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .badge {
+            display: inline-block; padding: 2px 6px; border-radius: 4px;
+            font-size: 10px; font-weight: bold; text-transform: uppercase;
+        }
+        .badge-mtproto { background: #1e3a8a; color: #93c5fd; }
+        .badge-webproxy { background: #581c87; color: #d8b4fe; }
+        .badge-socks5 { background: #b45309; color: #fde68a; }
+        .badge-http { background: #065f46; color: #a7f3d0; }
+
+        .toast {
+            visibility: hidden; min-width: 260px; background-color: #333; color: #fff;
+            text-align: center; border-radius: 8px; padding: 12px 18px; position: fixed;
+            z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
+            font-size: 13px; font-weight: bold;
+        }
+        .toast.show { visibility: visible; opacity: 1; bottom: 45px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-top">
+        <div>
+            <h1 data-i18n="title">MTProto & WebProxy & SOCKS5 Pro Checker</h1>
+            <p class="sub" data-i18n="subtitle">تست اتصال واقعی ۴ نوع پروکسی تلگرام و دانلود از سابسکریپشن‌های آنلاین</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-sub-manage" onclick="openSubModal()" data-i18n="btnManageSubs">⚙️ مدیریت سابسکریپشن‌ها</button>
+            <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+                <option value="fa">🇮🇷 فارسی</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- تنظیمات و پروفایل‌ها -->
+    <div class="config-card">
+        <div class="config-row">
+            <div class="config-item">
+                <label for="profilePreset" data-i18n="profileLabel">🎯 پروفایل سرعت و شرایط شبکه</label>
+                <select id="profilePreset" class="preset-select" onchange="applyProfile(this.value)">
+                    <option value="fast" data-i18n="pFast">🚀 سریع (تایم‌اوت 5s | همزمانی 25 | پیش‌چک فعال)</option>
+                    <option value="balanced" selected data-i18n="pBalanced">⚖️ متعادل (تایم‌اوت 10s | همزمانی 10 | پیش‌چک فعال)</option>
+                    <option value="national" data-i18n="pNational">🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 5 | بدون پیش‌چک)</option>
+                    <option value="custom" data-i18n="pCustom">🛠️ سفارشی (تنظیم دستی کاربر)</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label for="timeoutSeconds" data-i18n="timeoutLabel">⏱️ تاخیر هر پروکسی (ثانیه)</label>
+                <input id="timeoutSeconds" type="number" value="10" min="1" max="180" oninput="markCustomProfile()">
+            </div>
+            <div class="config-item">
+                <label for="concurrency" data-i18n="concurrencyLabel">⚙️ تعداد بررسی همزمان</label>
+                <input id="concurrency" type="number" value="10" min="1" max="100" oninput="markCustomProfile()">
+            </div>
+            <div class="config-item">
+                <label>&nbsp;</label>
+                <button class="btn-fetch-sub" id="btnFetchSubs" onclick="fetchSubscriptions()" data-i18n="btnFetchSubs">
+                    📥 دریافت پروکسی‌ها از سابسکریپشن‌ها
+                </button>
+            </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <label class="checkbox-container">
+                <input type="checkbox" id="enableTcpPrecheck" checked onchange="markCustomProfile()">
+                <span data-i18n="tcpPrecheckLabel">⚡ پیش‌چک سریع پورت TCP (رد کردن فوری پورت‌های بسته در زمان‌های عادی)</span>
+            </label>
+            <span style="font-size: 11px; color: var(--muted);" data-i18n="proxyNotice">
+                💡 پشتیبانی کامل از هر ۴ پروتکل: MTProto معمولی، Fake-TLS، WebProxy (پورت ۴۴۳) و SOCKS5.
+            </span>
+        </div>
+    </div>
+
+    <!-- وضعیت پیشرفت -->
+    <div>
+        <div class="progress-box"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="status-bar-info">
+            <span id="statusText" data-i18n="ready">آماده برای شروع...</span>
+            <span id="counterStats">0 / 0</span>
+        </div>
+    </div>
+
+    <!-- دو پنل ورودی و خروجی -->
+    <div class="grid">
+        <div>
+            <div class="panel-header">
+                <span class="panel-title" data-i18n="inputLabel">📥 لیست ورودی (MTProto / WebProxy / SOCKS5)</span>
+                <span id="inputCount" style="font-size: 12px; color: var(--muted);">0 پروکسی</span>
+            </div>
+            <textarea id="inputProxies" placeholder="..." oninput="updateInputCount()"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-start" id="startBtn" onclick="startCheck()" data-i18n="startBtn">▶️ شروع بررسی دقیق</button>
+                <button class="btn btn-stop" id="stopBtn" onclick="stopCheck()" disabled data-i18n="stopBtn">⏹️ توقف</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel-header">
+                <span class="panel-title" data-i18n="outputLabel">🚀 لیست ۱۰۰٪ سالم و آماده استفاده</span>
+                <span id="workingCount" style="font-size: 12px; color: var(--success);">0 سالم</span>
+            </div>
+            <textarea id="outputProxies" readonly placeholder="..."></textarea>
+            <div class="output-actions">
+                <button class="btn btn-copy-best" id="btnOpenBestTg" onclick="openBestInTelegram()" data-i18n="btnOpenBest">
+                    🚀 اتصال بهترین در تلگرام
+                </button>
+                <button class="btn btn-copy-top" onclick="copyTopN()">
+                    <span data-i18n="btnCopyTop">📋 کپی</span>
+                    <input type="number" id="topNInput" class="top-n-input" value="10" min="1" max="500" onclick="event.stopPropagation()">
+                    <span data-i18n="btnCopyTopTail">تای برتر</span>
+                </button>
+                <button class="btn btn-outline" onclick="copyAllResults()" data-i18n="copyAllBtn">📋 کپی همه</button>
+                <button class="btn btn-outline" onclick="downloadTxt()" data-i18n="btnDownloadTxt">💾 TXT</button>
+                <button class="btn btn-outline" onclick="downloadJson()" data-i18n="btnDownloadJson">💾 JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- کنسول لاگ زنده -->
+    <div class="debug-console" id="console">
+        > System ready. Supported: MTProto, Fake-TLS, WebProxy, SOCKS5.
+    </div>
+</div>
+
+<!-- مودال مدیریت سابسکریپشن‌ها -->
+<div class="modal-backdrop" id="subModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title" data-i18n="modalSubTitle">⚙️ مدیریت لینک‌های سابسکریپشن</span>
+            <button class="modal-close" onclick="closeSubModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 13px; color: var(--muted); margin: 0;" data-i18n="modalSubDesc">
+                منابع اشتراک زیر هنگام کلیک روی «دریافت پروکسی‌ها» فراخوانی می‌شوند. می‌توانید منابع جدید اضافه یا موارد دلخواه را غیرفعال کنید.
+            </p>
+            <div class="sub-list" id="subListContainer"></div>
+            
+            <div style="border-top: 1px solid #1e314f; padding-top: 10px;">
+                <label style="font-size: 12px; font-weight: bold; color: #cbd5e1;" data-i18n="addCustomSub">➕ افزودن لینک سابسکریپشن جدید:</label>
+                <div class="add-sub-box">
+                    <input type="text" id="newSubName" placeholder="نام منبع (اختیاری)" style="max-width: 150px;">
+                    <input type="text" id="newSubUrl" placeholder="https://raw.githubusercontent.com/.../tg.txt">
+                    <button class="btn-add-sub" onclick="addNewSubscription()" data-i18n="btnAdd">افزودن</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="resetDefaultSubs()" data-i18n="btnResetDefaults">🔄 بازنشانی به پیش‌فرض</button>
+            <button class="btn btn-start" style="padding: 8px 20px;" onclick="closeSubModal()" data-i18n="btnClose">تایید و بستن</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    const translations = {
+        fa: {
+            title: "MTProto, SOCKS5, HTTP & WebProxy Pro Checker",
+            subtitle: "تست اتصال واقعی ۴ پروتکل رسمی تلگرام (MTProto, SOCKS5, HTTP, WebProxy) و دریافت از سابسکریپشن‌ها",
+            btnManageSubs: "⚙️ مدیریت سابسکریپشن‌ها",
+            profileLabel: "🎯 پروفایل سرعت و شرایط شبکه",
+            pFast: "🚀 سریع (تایم‌اوت 5s | همزمانی 25 | پیش‌چک فعال)",
+            pBalanced: "⚖️ متعادل (تایم‌اوت 10s | همزمانی 10 | پیش‌چک فعال)",
+            pNational: "🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 5 | بدون پیش‌چک)",
+            pCustom: "🛠️ سفارشی (تنظیم دستی کاربر)",
+            timeoutLabel: "⏱️ تاخیر هر پروکسی (ثانیه)",
+            concurrencyLabel: "⚙️ تعداد بررسی همزمان",
+            tcpPrecheckLabel: "⚡ پیش‌چک سریع پورت TCP (رد کردن فوری پورت‌های بسته در زمان‌های عادی)",
+            proxyNotice: "💡 پشتیبانی کامل از هر ۴ پروتکل رسمی تلگرام: MTProto، SOCKS5، HTTP (تونل) و WebProxy.",
+            btnFetchSubs: "📥 دریافت پروکسی‌ها از سابسکریپشن‌ها",
+            ready: "آماده برای شروع...",
+            inputLabel: "📥 لیست ورودی (MTProto / SOCKS5 / HTTP / WebProxy)",
+            inputPlaceholder: "لینک‌های پروکسی (tg://proxy یا tg://socks یا tg://http یا tg://webproxy) را اینجا کپی کنید...",
+            outputLabel: "🚀 لیست ۱۰۰٪ سالم و آماده استفاده",
+            outputPlaceholder: "پروکسی‌های تاییدشده اینجا ظاهر می‌شوند...",
+            startBtn: "▶️ شروع بررسی دقیق",
+            stopBtn: "⏹️ توقف",
+            btnOpenBest: "🚀 اتصال بهترین در تلگرام",
+            btnCopyTop: "📋 کپی",
+            btnCopyTopTail: "تای برتر",
+            copyAllBtn: "📋 کپی همه",
+            btnDownloadTxt: "💾 TXT",
+            btnDownloadJson: "💾 JSON",
+            modalSubTitle: "⚙️ مدیریت لینک‌های سابسکریپشن",
+            modalSubDesc: "منابع اشتراک زیر هنگام کلیک روی «دریافت پروکسی‌ها» فراخوانی می‌شوند. می‌توانید منابع جدید اضافه یا موارد دلخواه را غیرفعال کنید.",
+            addCustomSub: "➕ افزودن لینک سابسکریپشن جدید:",
+            btnAdd: "افزودن",
+            btnResetDefaults: "🔄 بازنشانی به پیش‌فرض",
+            btnClose: "تایید و بستن",
+            statusProgress: "وضعیت: {c} از {t} | سالم: {w} | پورت بسته: {f}",
+            toastCopied: "✅ در کلیپ‌بورد کپی شد!",
+            toastEmpty: "⚠️ لیست پروکسی خالی است!",
+            toastNoValid: "⛔ هیچ لینک معتبری یافت نشد!",
+            toastNoWorking: "😔 هیچ پروکسی سالمی پیدا نشد.",
+            toastFound: "🎉 {n} پروکسی سالم پیدا شد!",
+            toastFetching: "⏳ در حال دریافت پروکسی‌ها از {n} منبع اشتراک...",
+            toastFetchDone: "✅ تعداد {n} پروکسی تازه استخراج و بارگذاری شد!",
+            toastStopped: "⏹️ فرآیند توسط کاربر متوقف شد.",
+            toastTelegramSent: "🚀 دستور اتصال در تلگرام ویندوز ارسال شد!",
+            errorGeneric: "خطایی رخ داد. کنسول را چک کنید."
+        },
+        en: {
+            title: "MTProto, SOCKS5, HTTP & WebProxy Pro Checker",
+            subtitle: "Real verification of all 4 official Telegram proxy types with live subscription fetching",
+            btnManageSubs: "⚙️ Manage Subscriptions",
+            profileLabel: "🎯 Network & Speed Preset",
+            pFast: "🚀 Fast (Timeout 5s | Concurrency 25 | TCP Pre-check ON)",
+            pBalanced: "⚖️ Balanced (Timeout 10s | Concurrency 10 | TCP Pre-check ON)",
+            pNational: "🐢 High Censorship / Intranet (Timeout 60s | Concurrency 5 | No Pre-check)",
+            pCustom: "🛠️ Custom (Manual Configuration)",
+            timeoutLabel: "⏱️ Per-proxy timeout (seconds)",
+            concurrencyLabel: "⚙️ Concurrent checks",
+            tcpPrecheckLabel: "⚡ Quick TCP Pre-check (Fast discard of closed ports under normal internet)",
+            proxyNotice: "💡 Full support for all 4 official Telegram protocols: MTProto, SOCKS5, HTTP Tunnel, and WebProxy.",
+            btnFetchSubs: "📥 Fetch From Subscriptions",
+            ready: "Ready to start...",
+            inputLabel: "📥 Input List (MTProto / SOCKS5 / HTTP / WebProxy)",
+            inputPlaceholder: "Paste proxy links (tg://proxy or tg://socks or tg://http or tg://webproxy) here...",
+            outputLabel: "🚀 Working Proxies (100% Tested)",
+            outputPlaceholder: "Verified proxies will appear here...",
+            startBtn: "▶️ Start Deep Check",
+            stopBtn: "⏹️ Stop",
+            btnOpenBest: "🚀 Connect Best in Telegram",
+            btnCopyTop: "📋 Copy Top",
+            btnCopyTopTail: "Proxies",
+            copyAllBtn: "📋 Copy All",
+            btnDownloadTxt: "💾 TXT",
+            btnDownloadJson: "💾 JSON",
+            modalSubTitle: "⚙️ Manage Subscription Sources",
+            modalSubDesc: "The following subscriptions are fetched when clicking 'Fetch From Subscriptions'. You can toggle, add, or remove sources.",
+            addCustomSub: "➕ Add new subscription URL:",
+            btnAdd: "Add",
+            btnResetDefaults: "🔄 Reset to Defaults",
+            btnClose: "Save & Close",
+            statusProgress: "Status: {c} / {t} | Working: {w} | Closed: {f}",
+            toastCopied: "✅ Copied to clipboard!",
+            toastEmpty: "⚠️ Proxy list is empty!",
+            toastNoValid: "⛔ No valid links found!",
+            toastNoWorking: "😔 No working proxies found.",
+            toastFound: "🎉 Found {n} working proxies!",
+            toastFetching: "⏳ Fetching fresh proxies from {n} sources...",
+            toastFetchDone: "✅ Extracted {n} unique proxies into input!",
+            toastStopped: "⏹️ Verification stopped by user.",
+            toastTelegramSent: "🚀 Proxy link sent to Telegram Desktop!",
+            errorGeneric: "An error occurred. Check console."
+        }
+    };
+
+    let currentLang = localStorage.getItem('lang') || 'fa';
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('lang', lang);
+        document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
+        document.getElementById('langSelect').value = lang;
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang] && translations[lang][key]) {
+                el.innerText = translations[lang][key];
+            }
+        });
+
+        document.getElementById('inputProxies').placeholder = translations[lang].inputPlaceholder;
+        document.getElementById('outputProxies').placeholder = translations[lang].outputPlaceholder;
+    }
+
+    function changeLanguage(lang) {
+        setLanguage(lang);
+    }
+
+    function applyProfile(profileName) {
+        const timeoutInput = document.getElementById('timeoutSeconds');
+        const concInput = document.getElementById('concurrency');
+        const precheckInput = document.getElementById('enableTcpPrecheck');
+
+        if (profileName === 'fast') {
+            timeoutInput.value = 5;
+            concInput.value = 25;
+            precheckInput.checked = true;
+        } else if (profileName === 'balanced') {
+            timeoutInput.value = 10;
+            concInput.value = 10;
+            precheckInput.checked = true;
+        } else if (profileName === 'national') {
+            timeoutInput.value = 60;
+            concInput.value = 5;
+            precheckInput.checked = false;
+        }
+    }
+
+    function markCustomProfile() {
+        document.getElementById('profilePreset').value = 'custom';
+    }
+
+    function log(msg, type = 'info') {
+        const c = document.getElementById('console');
+        const line = document.createElement('div');
+        line.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        if (type === 'error') line.className = 'log-error';
+        if (type === 'warn') line.className = 'log-warn';
+        c.appendChild(line);
+        c.scrollTop = c.scrollHeight;
+    }
+
+    let userSubscriptions = [];
+
+    async function loadSubscriptions() {
+        const saved = localStorage.getItem('user_subscriptions');
+        if (saved) {
+            try {
+                userSubscriptions = JSON.parse(saved);
+            } catch (e) {
+                userSubscriptions = [];
+            }
+        }
+
+        if (!userSubscriptions || userSubscriptions.length === 0) {
+            try {
+                const res = await fetch('/api/default-subscriptions');
+                const data = await res.json();
+                if (data.ok) {
+                    userSubscriptions = data.sources;
+                    saveSubscriptions();
+                }
+            } catch (e) {
+                console.error('Failed to load default subs', e);
+            }
+        }
+    }
+
+    function saveSubscriptions() {
+        localStorage.setItem('user_subscriptions', JSON.stringify(userSubscriptions));
+    }
+
+    function renderSubModalList() {
+        const container = document.getElementById('subListContainer');
+        container.innerHTML = '';
+
+        userSubscriptions.forEach((sub, idx) => {
+            const item = document.createElement('div');
+            item.className = 'sub-item';
+            item.innerHTML = `
+                <div class="sub-info">
+                    <div class="sub-name">${sub.name || 'Subscription ' + (idx + 1)}</div>
+                    <div class="sub-url">${sub.url}</div>
+                </div>
+                <div class="sub-actions">
+                    <input type="checkbox" ${sub.enabled ? 'checked' : ''} onchange="toggleSub(${idx}, this.checked)" title="فعال / غیرفعال">
+                    <button class="sub-del" onclick="deleteSub(${idx})" title="حذف">&times;</button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    function toggleSub(index, isChecked) {
+        if (userSubscriptions[index]) {
+            userSubscriptions[index].enabled = isChecked;
+            saveSubscriptions();
+        }
+    }
+
+    function deleteSub(index) {
+        userSubscriptions.splice(index, 1);
+        saveSubscriptions();
+        renderSubModalList();
+    }
+
+    function addNewSubscription() {
+        const nameInput = document.getElementById('newSubName');
+        const urlInput = document.getElementById('newSubUrl');
+        const url = urlInput.value.trim();
+        const name = nameInput.value.trim() || 'Custom Source';
+
+        if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+            alert('لطفا یک آدرس معتبر اینترنتی با http یا https وارد کنید.');
+            return;
+        }
+
+        userSubscriptions.push({ name, url, enabled: true });
+        saveSubscriptions();
+        renderSubModalList();
+
+        urlInput.value = '';
+        nameInput.value = '';
+    }
+
+    async function resetDefaultSubs() {
+        try {
+            const res = await fetch('/api/default-subscriptions');
+            const data = await res.json();
+            if (data.ok) {
+                userSubscriptions = data.sources;
+                saveSubscriptions();
+                renderSubModalList();
+            }
+        } catch (e) {
+            alert('خطا در دریافت لیست پیش‌فرض');
+        }
+    }
+
+    function openSubModal() {
+        renderSubModalList();
+        document.getElementById('subModal').style.display = 'flex';
+    }
+
+    function closeSubModal() {
+        document.getElementById('subModal').style.display = 'none';
+    }
+
+    async function fetchSubscriptions() {
+        const t = translations[currentLang];
+        const activeSubs = userSubscriptions.filter(s => s.enabled);
+        if (activeSubs.length === 0) {
+            showToast('هیچ منبع اشتراک فعالی انتخاب نشده است! به بخش مدیریت منابع بروید.', true);
+            return;
+        }
+
+        const btn = document.getElementById('btnFetchSubs');
+        btn.disabled = true;
+        btn.innerText = '⏳ در حال دانلود...';
+
+        showToast(t.toastFetching.replace('{n}', activeSubs.length));
+        log(`Fetching fresh proxies from ${activeSubs.length} active subscription links...`);
+
+        try {
+            const response = await fetch('/api/fetch-subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ urls: activeSubs.map(s => s.url) })
+            });
+
+            const data = await response.json();
+            if (data.ok && data.proxies) {
+                const newLinks = data.proxies.map(p => p.canonicalUrl).join('\n');
+                const existing = document.getElementById('inputProxies').value.trim();
+                
+                document.getElementById('inputProxies').value = existing ? existing + '\n' + newLinks : newLinks;
+                updateInputCount();
+
+                log(`Successfully loaded ${data.count} unique proxies from subscriptions.`);
+                showToast(t.toastFetchDone.replace('{n}', data.count));
+            } else {
+                throw new Error('No proxies returned');
+            }
+        } catch (err) {
+            log(`Error fetching subscriptions: ${err.message}`, 'error');
+            showToast('خطا در دریافت پروکسی‌ها از سرور', true);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = t.btnFetchSubs;
+        }
+    }
+
+    function parseSingleLink(link) {
+        try {
+            let clean = link.trim().replace('.&', '&');
+            if (!clean.includes('://')) return null;
+
+            const isWebProxy = clean.includes('/webproxy') || clean.startsWith('tg://webproxy');
+            const isStandardProxy = clean.includes('/proxy') || clean.startsWith('tg://proxy');
+            const isSocks = clean.includes('/socks') || clean.startsWith('tg://socks') || clean.startsWith('socks5://') || clean.startsWith('socks://');
+            const isHttp = clean.includes('/http') || clean.startsWith('tg://http') || (clean.startsWith('http') && clean.includes('@'));
+
+            if (!isWebProxy && !isStandardProxy && !isSocks && !isHttp) return null;
+
+            if (isHttp) {
+                let server, port, user = null, pass = null;
+                if (clean.startsWith('tg://http') || clean.includes('t.me/http')) {
+                    const urlObj = new URL(clean.replace('https://t.me/http', 'tg://http').replace('http://t.me/http', 'tg://http'));
+                    const params = new URLSearchParams(urlObj.search);
+                    server = params.get('server');
+                    port = parseInt(params.get('port')) || 8080;
+                    user = params.get('user') || null;
+                    pass = params.get('pass') || null;
+                } else {
+                    try {
+                        const urlObj = new URL(clean);
+                        server = urlObj.hostname;
+                        port = parseInt(urlObj.port) || 8080;
+                        user = urlObj.username || null;
+                        pass = urlObj.password || null;
+                    } catch (e) {
+                        return null;
+                    }
+                }
+
+                if (!server || port <= 0 || port > 65535) return null;
+
+                let canonicalUrl = `tg://http?server=${server}&port=${port}`;
+                if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+                if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+                return { server, port, user, pass, protocol: 'http', canonicalUrl, original: clean };
+            }
+
+            if (isSocks) {
+                if (clean.startsWith('socks5://') || clean.startsWith('socks://')) {
+                    const urlObj = new URL(clean);
+                    const server = urlObj.hostname;
+                    const port = parseInt(urlObj.port) || 1080;
+                    const user = urlObj.username || null;
+                    const pass = urlObj.password || null;
+                    if (!server || port <= 0 || port > 65535) return null;
+
+                    let canonicalUrl = `tg://socks?server=${server}&port=${port}`;
+                    if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+                    if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+                    return { server, port, user, pass, protocol: 'socks5', canonicalUrl, original: clean };
+                } else {
+                    const urlObj = new URL(clean.replace('https://t.me/socks', 'tg://socks').replace('http://t.me/socks', 'tg://socks'));
+                    const params = new URLSearchParams(urlObj.search);
+                    const server = params.get('server');
+                    const port = parseInt(params.get('port')) || 1080;
+                    const user = params.get('user') || null;
+                    const pass = params.get('pass') || null;
+                    if (!server || port <= 0 || port > 65535) return null;
+
+                    let canonicalUrl = `tg://socks?server=${server}&port=${port}`;
+                    if (user) canonicalUrl += `&user=${encodeURIComponent(user)}`;
+                    if (pass) canonicalUrl += `&pass=${encodeURIComponent(pass)}`;
+
+                    return { server, port, user, pass, protocol: 'socks5', canonicalUrl, original: clean };
+                }
+            }
+
+            const urlObj = new URL(clean);
+            const params = new URLSearchParams(urlObj.search);
+
+            const server = params.get('server');
+            let port = parseInt(params.get('port'));
+            if (isNaN(port) || port <= 0) {
+                if (isWebProxy) {
+                    port = 443;
+                } else {
+                    return null;
+                }
+            }
+            if (port <= 0 || port > 65535) return null;
+
+            let secret = params.get('secret');
+            if (!server || !secret) return null;
+
+            let s = secret.split('#')[0].split('?')[0].split('&')[0].trim();
+            const badChars = ' )!@#$%^&*()_+~[]{}|;:\',.<>?/\t\r\n\x60';
+            let len = s.length;
+            while (len > 0 && badChars.indexOf(s[len - 1]) !== -1) {
+                len--;
+            }
+            secret = s.substring(0, len);
+
+            if (secret.length === 0 || secret.length > 200 || secret.includes('AAAAAAAAAAAAAAAAAAAA')) {
+                return null;
+            }
+
+            const protocol = isWebProxy ? 'webproxy' : 'mtproto';
+            const canonicalUrl = isWebProxy
+                ? `tg://webproxy?server=${server}&port=${port}&secret=${secret}`
+                : `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
+
+            return { server, port, secret, protocol, canonicalUrl, original: clean };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function updateInputCount() {
+        const text = document.getElementById('inputProxies').value;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const valid = lines.map(parseSingleLink).filter(p => p !== null);
+        document.getElementById('inputCount').innerText = `${valid.length} پروکسی معتبر`;
+    }
+
+    let workingProxies = [];
+    let isChecking = false;
+    let isStopRequested = false;
+
+    async function startCheck() {
+        const t = translations[currentLang];
+        const input = document.getElementById('inputProxies').value;
+        if (!input.trim()) return showToast(t.toastEmpty, true);
+
+        const lines = input.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const validProxies = [];
+        const seen = new Set();
+
+        for (const line of lines) {
+            const p = parseSingleLink(line);
+            if (p) {
+                const key = `${p.protocol}:${p.server}:${p.port}:${p.secret || ''}:${p.user || ''}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    validProxies.push(p);
+                }
+            }
+        }
+
+        if (validProxies.length === 0) {
+            showToast(t.toastNoValid, true);
+            log('No valid proxies to check.', 'warn');
+            return;
+        }
+
+        workingProxies = [];
+        document.getElementById('outputProxies').value = '';
+        isChecking = true;
+        isStopRequested = false;
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        const timeoutSeconds = Math.max(1, Number(document.getElementById('timeoutSeconds').value) || 10);
+        const concurrency = Math.max(1, Math.min(100, Number(document.getElementById('concurrency').value) || 10));
+        const enableTcpPrecheck = document.getElementById('enableTcpPrecheck').checked;
+
+        log(`Starting verification of ${validProxies.length} proxies (Timeout: ${timeoutSeconds}s, Concurrency: ${concurrency}, TCP Precheck: ${enableTcpPrecheck ? 'ON' : 'OFF'}).`);
+
+        let completed = 0;
+        let closedCount = 0;
+        const total = validProxies.length;
+
+        const checkOne = async (proxyItem) => {
+            if (isStopRequested) return;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), (timeoutSeconds + 2) * 1000);
+
+                const res = await fetch('/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        server: proxyItem.server,
+                        port: proxyItem.port,
+                        secret: proxyItem.secret,
+                        user: proxyItem.user,
+                        pass: proxyItem.pass,
+                        protocol: proxyItem.protocol,
+                        timeoutMs: timeoutSeconds * 1000,
+                        enableTcpPrecheck
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.ok) {
+                        workingProxies.push({ ...proxyItem, ping: data.ping });
+                        updateOutput();
+                        log(`✔ SUCCESS [${proxyItem.protocol.toUpperCase()}] ${proxyItem.server}:${proxyItem.port} (${data.ping}ms)`);
+                    } else if (data.reason === 'tcp_unreachable') {
+                        closedCount++;
+                    }
+                }
+            } catch (err) {
+            } finally {
+                completed++;
+                updateUI(completed, total, closedCount);
+            }
+        };
+
+        for (let i = 0; i < validProxies.length; i += concurrency) {
+            if (isStopRequested) break;
+            const batch = validProxies.slice(i, i + concurrency);
+            await Promise.all(batch.map(p => checkOne(p)));
+        }
+
+        finishCheck();
+    }
+
+    function stopCheck() {
+        if (isChecking) {
+            isStopRequested = true;
+            log('Stop signal received. Finishing pending checks...', 'warn');
+            showToast(translations[currentLang].toastStopped, true);
+        }
+    }
+
+    function updateUI(c, t, f = 0) {
+        const percent = Math.min(100, Math.round((c / t) * 100));
+        document.getElementById('progressBar').style.width = percent + '%';
+        document.getElementById('counterStats').innerText = `${c} / ${t} (${percent}%)`;
+
+        const statusStr = translations[currentLang].statusProgress
+            .replace('{c}', c)
+            .replace('{t}', t)
+            .replace('{w}', workingProxies.length)
+            .replace('{f}', f);
+        document.getElementById('statusText').innerText = statusStr;
+        document.getElementById('workingCount').innerText = `${workingProxies.length} سالم`;
+    }
+
+    function updateOutput() {
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const text = workingProxies
+            .map(p => `${p.canonicalUrl} # [${p.protocol.toUpperCase()}] Ping: ${p.ping}ms`)
+            .join('\n\n');
+        document.getElementById('outputProxies').value = text;
+    }
+
+    function finishCheck() {
+        isChecking = false;
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+
+        log(`Finished verification. Working proxies found: ${workingProxies.length}`);
+        if (workingProxies.length > 0) {
+            showToast(translations[currentLang].toastFound.replace('{n}', workingProxies.length));
+        } else {
+            showToast(translations[currentLang].toastNoWorking, true);
+        }
+    }
+
+    async function openBestInTelegram() {
+        if (workingProxies.length === 0) {
+            return showToast(translations[currentLang].toastEmpty, true);
+        }
+
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const best = workingProxies[0];
+
+        try {
+            window.location.href = best.canonicalUrl;
+        } catch (e) {}
+
+        try {
+            await fetch('/api/open-telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: best.canonicalUrl })
+            });
+            showToast(translations[currentLang].toastTelegramSent);
+            log(`Opened best proxy in Telegram: ${best.canonicalUrl} (${best.ping}ms)`);
+        } catch (e) {
+            showToast('خطا در اجرای تلگرام ویندوز', true);
+        }
+    }
+
+    function copyTopN() {
+        if (workingProxies.length === 0) return showToast(translations[currentLang].toastEmpty, true);
+
+        const n = Math.max(1, parseInt(document.getElementById('topNInput').value) || 10);
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const selected = workingProxies.slice(0, n);
+
+        const text = selected.map(p => p.canonicalUrl).join('\n\n');
+        clipboardCopy(text);
+    }
+
+    function copyAllResults() {
+        if (workingProxies.length === 0) return showToast(translations[currentLang].toastEmpty, true);
+
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const text = workingProxies.map(p => p.canonicalUrl).join('\n\n');
+        clipboardCopy(text);
+    }
+
+    function clipboardCopy(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(translations[currentLang].toastCopied);
+            }).catch(() => fallbackCopy(text));
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast(translations[currentLang].toastCopied);
+        } catch (err) {
+            showToast('Error copying', true);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function downloadTxt() {
+        if (workingProxies.length === 0) return showToast(translations[currentLang].toastEmpty, true);
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const content = workingProxies.map(p => `${p.canonicalUrl} # Ping: ${p.ping}ms`).join('\n\n');
+        downloadFile(content, 'working_proxies.txt', 'text/plain');
+    }
+
+    function downloadJson() {
+        if (workingProxies.length === 0) return showToast(translations[currentLang].toastEmpty, true);
+        workingProxies.sort((a, b) => a.ping - b.ping);
+        const content = JSON.stringify(workingProxies, null, 2);
+        downloadFile(content, 'working_proxies.json', 'application/json');
+    }
+
+    function downloadFile(content, filename, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function showToast(message, isError = false) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.style.backgroundColor = isError ? "#ef4444" : "#10b981";
+        toast.className = "toast show";
+        setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3200);
+    }
+
+    setLanguage(currentLang);
+    loadSubscriptions();
+</script>
+</body>
+</html>
