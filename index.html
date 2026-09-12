@@ -568,20 +568,19 @@
             <div class="config-item" style="flex: 2;">
                 <label for="profilePreset" data-i18n="profileLabel">🎯 پروفایل هوشمند سرعت و شبکه</label>
                 <select id="profilePreset" class="preset-select" onchange="applyProfile(this.value)">
-                    <option value="turbo" data-i18n="pTurbo">🚀 توربو / اسکن برق‌آسا (تایم‌اوت 3s | همزمانی 30 | پیش‌چک فعال)</option>
-                    <option value="balanced" selected data-i18n="pBalanced">⚖️ متعادل و استاندارد (تایم‌اوت 8s | همزمانی 15 | پیش‌چک فعال)</option>
-                    <option value="anticensorship" data-i18n="pAntiCensorship">🛡️ فیلترینگ شدید و اینترانت (تایم‌اوت 25s | همزمانی 8 | بدون پیش‌چک)</option>
-                    <option value="recovery" data-i18n="pRecovery">🐢 بازیابی عمیق پروکسی‌های ضعیف (تایم‌اوت 45s | همزمانی 5 | بدون پیش‌چک)</option>
+                    <option value="turbo" data-i18n="pTurbo">🚀 سریع (تایم‌اوت 5s | همزمانی 75 | پیش‌چک فعال)</option>
+                    <option value="balanced" selected data-i18n="pBalanced">⚖️ متعادل (تایم‌اوت 10s | همزمانی 50 | پیش‌چک فعال)</option>
+                    <option value="national" data-i18n="pNational">🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)</option>
                     <option value="custom" data-i18n="pCustom">🛠️ سفارشی (تنظیم دستی کاربر)</option>
                 </select>
             </div>
             <div class="config-item">
                 <label for="timeoutSeconds" data-i18n="timeoutLabel">⏱️ تاخیر هر پروکسی (ثانیه)</label>
-                <input id="timeoutSeconds" type="number" value="8" min="1" max="180" oninput="markCustomProfile()">
+                <input id="timeoutSeconds" type="number" value="10" min="1" max="180" oninput="markCustomProfile()">
             </div>
             <div class="config-item">
                 <label for="concurrency" data-i18n="concurrencyLabel">⚙️ تعداد بررسی همزمان</label>
-                <input id="concurrency" type="number" value="15" min="1" max="100" oninput="markCustomProfile()">
+                <input id="concurrency" type="number" value="50" min="1" max="150" oninput="markCustomProfile()">
             </div>
             <div class="config-item" style="flex: 0 0 auto;">
                 <label>&nbsp;</label>
@@ -733,10 +732,9 @@
             subtitle: "تست اتصال واقعی و تخصصی هر ۴ پروتکل رسمی تلگرام (MTProto, SOCKS5, HTTP, WebProxy)",
             btnManageSubs: "⚙️ مدیریت سابسکریپشن‌ها",
             profileLabel: "🎯 پروفایل هوشمند سرعت و شبکه",
-            pTurbo: "🚀 توربو / اسکن برق‌آسا (تایم‌اوت 3s | همزمانی 30 | پیش‌چک فعال)",
-            pBalanced: "⚖️ متعادل و استاندارد (تایم‌اوت 8s | همزمانی 15 | پیش‌چک فعال)",
-            pAntiCensorship: "🛡️ فیلترینگ شدید و اینترانت (تایم‌اوت 25s | همزمانی 8 | بدون پیش‌چک)",
-            pRecovery: "🐢 بازیابی عمیق پروکسی‌های ضعیف (تایم‌اوت 45s | همزمانی 5 | بدون پیش‌چک)",
+            pTurbo: "🚀 سریع (تایم‌اوت 5s | همزمانی 75 | پیش‌چک فعال)",
+            pBalanced: "⚖️ متعادل (تایم‌اوت 10s | همزمانی 50 | پیش‌چک فعال)",
+            pNational: "🐢 اینترانت / اختلال شدید (تایم‌اوت 60s | همزمانی 10 | بدون پیش‌چک)",
             pCustom: "🛠️ سفارشی (تنظیم دستی کاربر)",
             timeoutLabel: "⏱️ تاخیر هر پروکسی (ثانیه)",
             concurrencyLabel: "⚙️ تعداد بررسی همزمان",
@@ -785,11 +783,10 @@
             title: "Telegram Proxy Checker",
             subtitle: "Real protocol verification of all 4 official Telegram proxies (MTProto, SOCKS5, HTTP, WebProxy)",
             btnManageSubs: "⚙️ Manage Subscriptions",
-            profileLabel: "🎯 Intelligent Network Preset",
-            pTurbo: "🚀 Turbo Scan (Timeout 3s | Concurrency 30 | Pre-check ON)",
-            pBalanced: "⚖️ Smart Balanced (Timeout 8s | Concurrency 15 | Pre-check ON)",
-            pAntiCensorship: "🛡️ Heavy Censorship / Intranet (Timeout 25s | Concurrency 8 | No Pre-check)",
-            pRecovery: "🐢 Deep Recovery (Timeout 45s | Concurrency 5 | No Pre-check)",
+            profileLabel: "🎯 Network & Speed Preset",
+            pTurbo: "🚀 Fast (Timeout 5s | Concurrency 75 | Pre-check ON)",
+            pBalanced: "⚖️ Balanced (Timeout 10s | Concurrency 50 | Pre-check ON)",
+            pNational: "🐢 National Net / Intranet (Timeout 60s | Concurrency 10 | No Pre-check)",
             pCustom: "🛠️ Custom (Manual Settings)",
             timeoutLabel: "⏱️ Per-proxy timeout (seconds)",
             concurrencyLabel: "⚙️ Concurrent checks",
@@ -866,20 +863,16 @@
         const precheckInput = document.getElementById('enableTcpPrecheck');
 
         if (profileName === 'turbo') {
-            timeoutInput.value = 3;
-            concInput.value = 30;
+            timeoutInput.value = 5;
+            concInput.value = 75;
             precheckInput.checked = true;
         } else if (profileName === 'balanced') {
-            timeoutInput.value = 8;
-            concInput.value = 15;
+            timeoutInput.value = 10;
+            concInput.value = 50;
             precheckInput.checked = true;
-        } else if (profileName === 'anticensorship') {
-            timeoutInput.value = 25;
-            concInput.value = 8;
-            precheckInput.checked = false;
-        } else if (profileName === 'recovery') {
-            timeoutInput.value = 45;
-            concInput.value = 5;
+        } else if (profileName === 'national') {
+            timeoutInput.value = 60;
+            concInput.value = 10;
             precheckInput.checked = false;
         }
     }
